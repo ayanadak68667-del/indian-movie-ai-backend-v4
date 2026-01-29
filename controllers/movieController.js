@@ -3,42 +3,60 @@ const tmdbService = require('../services/tmdbService');
 const groqService = require('../services/groqService');
 const youtubeService = require('../services/youtubeService');
 
+// ৩০ দিনের ক্যাশ টাইম (চাও তো ২৪hও করতে পারো)
+const CACHE_TTL = 1000 * 60 * 60 * 24 * 30;
+
 // মুভি ডিটেইলস পেজের জন্য মেইন ফাংশন
 const getMovieDetailsPage = async (req, res) => {
     const movieId = req.params.id;
-    const lang = req.query.lang || 'en'; // ভাষা টগল (en/hi)
-    const cacheKey = `${movieId}_${lang}`; // Mango Case কি (Key)
+    const lang = req.query.lang || 'en'; // en / hi
+    const cacheKey = `${movieId}_${lang}`; // language-wise আলাদা cache
 
     try {
-        // ১. Mango Case (MongoDB Cache) চেক করা
+        // ১. MongoDB cache খোঁজা
         let cachedMovie = await Movie.findOne({ tmdbId: cacheKey });
+
+        // ২. cache পুরনো কি না চেক করা
         if (cachedMovie) {
-            return res.json({ source: 'mango-case', data: cachedMovie });
+            const isStale =
+                Date.now() - new Date(cachedMovie.lastUpdated).getTime() > CACHE_TTL;
+
+            if (!isStale) {
+                // ফ্রেশ cache থাকলে সেটাই রিটার্ন
+                return res.json({ source: 'mango-case', data: cachedMovie });
+            }
+            // পুরনো হলে নিচে গিয়ে আবার লাইভ ফেচ হবে
         }
 
-        // ২. TMDB থেকে ডাটা আনা (ভাষা অনুযায়ী)
+        // ৩. TMDB থেকে ডিটেইলস আনা (ভাষা অনুযায়ী)
         const tmdbData = await tmdbService.getMovieDetails(movieId, lang);
-        if (!tmdbData) return res.status(404).json({ message: "Movie not found" });
+        if (!tmdbData) {
+            return res.status(404).json({ message: "Movie not found" });
+        }
 
-        // ৩. Groq AI এবং YouTube থেকে প্যারালাল ডাটা ফেচ (স্পিড বাড়ানোর জন্য)
+        // ৪. Groq AI + YouTube প্যারালাল ফেচ (স্পিডের জন্য)
         const [aiData, media] = await Promise.all([
-            groqService.getDetailedAiAnalysis(tmdbData.title, lang),
-            youtubeService.getMovieMedia(tmdbData.title, lang)
+            groqService.getDetailedAiAnalysis(tmdbData.title, lang).catch(() => null),
+            youtubeService.getMovieMedia(tmdbData.title, lang).catch(() => null)
         ]);
 
-        // ৪. আপনার ডিজাইন অনুযায়ী ডাটা অবজেক্ট তৈরি
+        // ৫. ফাইনাল অবজেক্ট তৈরি
         const finalMovieData = {
             tmdbId: cacheKey,
             details: tmdbData,
-            aiAnalysis: aiData, // Hits, Misses, Paychecks, BTS
-            media: media, // Trailers, Playlists
+            aiAnalysis: aiData,
+            media: media,
             lastUpdated: new Date()
         };
 
-        // ৫. ডাটাবেসে সেভ (৩০ দিনের জন্য)
-        const savedMovie = await Movie.create(finalMovieData);
+        // ৬. upsert: থাকলে আপডেট, না থাকলে নতুন তৈরি
+        const savedMovie = await Movie.findOneAndUpdate(
+            { tmdbId: cacheKey },
+            finalMovieData,
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
 
-        res.json({ source: 'live-api', data: savedMovie });
+        return res.json({ source: 'live-api', data: savedMovie });
 
     } catch (error) {
         console.error("Controller Error:", error.message);
