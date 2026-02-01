@@ -20,6 +20,7 @@ app.get('/', (req, res) => {
 // Routes
 app.use('/api/movies', require('./routes/movie'));
 app.use('/api/ai-chat', require('./routes/aiChat'));
+app.use("/api/home", require("./routes/home"));
 
 // Global error handler
 app.use((err, req, res, next) => {
