@@ -6,8 +6,7 @@ const youtubeService = require("../services/youtubeService");
 const { getDetailedAiAnalysis } = require("../services/groqService");
 const mongoCache = require("../services/mongoCacheService");
 
-const CACHE_TTL = 1000 * 60 * 60 * 24; // 24h
-
+const CACHE_TTL = 1000 * 60 * 60 * 24 * 30; // ✅ 30 days cache for movie details
 // ১️⃣ GET /api/movies/trending
 router.get("/trending", async (req, res) => {
   try {
