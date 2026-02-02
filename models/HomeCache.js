@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-console.log("✅ HomeCache model loaded");
 
 const homeCacheSchema = new mongoose.Schema({
   key: {
