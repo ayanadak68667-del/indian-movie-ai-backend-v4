@@ -7,13 +7,17 @@ const homeCacheSchema = new mongoose.Schema({
     unique: true
   },
   data: {
-    type: Object,
+    type: mongoose.Schema.Types.Mixed,
     required: true
   },
-  lastUpdated: {
+  createdAt: {
     type: Date,
-    default: Date.now
+    default: Date.now,
+    expires: 60 * 60 * 24 // ⏱️ 24 hours TTL
   }
 });
 
-module.exports = mongoose.model("HomeCache", homeCacheSchema);
+// 🛡️ Prevent OverwriteModelError (VERY IMPORTANT)
+module.exports =
+  mongoose.models.HomeCache ||
+  mongoose.model("HomeCache", homeCacheSchema);
