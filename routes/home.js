@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-console.log("✅ home.js route file LOADED");
 
 const tmdbService = require("../services/tmdbService");
 const homeCache = require("../services/homeCacheService");
