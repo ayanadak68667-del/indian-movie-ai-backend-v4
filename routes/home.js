@@ -127,7 +127,7 @@ router.get("/webseries", async (req, res) => {
  * GET /api/home
  * GET /api/home?mood=romance
  */
-router.get("/", async (req, res) => {
+router.get("/aggregate", async (req, res) => { ... })
   try {
     const requestedMood = req.query.mood;
     const mood = MOOD_GENRES[requestedMood] ? requestedMood : "default";
