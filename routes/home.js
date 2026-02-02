@@ -4,6 +4,7 @@ console.log("✅ home.js route file LOADED");
 
 const tmdbService = require("../services/tmdbService");
 const homeCache = require("../services/homeCacheService");
+console.log("homeCache:", homeCache);
 
 /**
  * 🎭 Mood → TMDB Genre Mapping
