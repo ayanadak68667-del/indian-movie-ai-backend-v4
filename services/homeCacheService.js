@@ -1,4 +1,5 @@
 const HomeCache = require("../models/HomeCache");
+console.log("✅ homeCacheService loaded");
 
 const HOME_TTL = 1000 * 60 * 60 * 24; // 24 hours
 
