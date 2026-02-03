@@ -99,7 +99,7 @@ router.get("/webseries", async (req, res) => {
 });
 
 // 🚀 Aggregated Homepage
-router.get("/aggregate", async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const mood = req.query.mood || "default";
     const cacheKey = `home_aggregate_${mood}`;
