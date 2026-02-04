@@ -6,12 +6,11 @@ const homeCache = require("../services/homeCacheService");
 
 // 🎭 Mood → Genre map
 const MOOD_GENRES = {
-  romance: 10749,
-  action: 28,
-  horror: 27,
-  comedy: 35,
-  thriller: 53,
-  drama: 18
+  horror: 27,       // 👻 Horror
+  romance: 10749,   // 💖 Romance
+  action: 28,       // 🔥 Action
+  fun: 35,          // 😂 Fun (Comedy)
+  mindbend: 53      // 🧠 Mind-Bend (Thriller)
 };
 
 /* ===============================
@@ -30,40 +29,55 @@ router.get("/", async (req, res) => {
 
     const genreId = MOOD_GENRES[mood];
 
-    const [
-      trending,
-      topRated,
-      upcoming,
-      webseries,
-      moodMovies
-    ] = await Promise.all([
-      tmdbService.getTrending(),
-      tmdbService.getTopRated(),
-      tmdbService.getUpcoming(),
-      tmdbService.getPopularWebSeries(),
-      genreId ? tmdbService.discoverMovies({ genre: genreId }) : null
+    // 🟢 CASE 1: NO MOOD (Default Homepage)
+    if (!genreId) {
+      const [trending, topRated, upcoming, webseries] = await Promise.all([
+        tmdbService.getTrending(),
+        tmdbService.getTopRated(),
+        tmdbService.getUpcoming(),
+        tmdbService.getPopularWebSeries()
+      ]);
+
+      const data = {
+        heroPicks: (trending?.results || []).slice(0, 3),
+        trending: trending?.results || [],
+        topRated: topRated?.results || [],
+        upcoming: upcoming?.results || [],
+        webSeries: webseries?.results || []
+      };
+
+      await homeCache.set(cacheKey, data);
+      return res.json({ success: true, cached: false, data });
+    }
+
+    // 🔥 CASE 2: MOOD SELECTED (FULLY MOOD-AWARE HOME)
+    const [moodMovies, moodWebSeries] = await Promise.all([
+      tmdbService.discoverMovies({ genre: genreId }),
+      tmdbService.getPopularWebSeries()
     ]);
 
+    const results = moodMovies?.results || [];
+
     const data = {
-      heroPicks: genreId
-        ? (moodMovies?.results || []).slice(0, 3)
-        : (trending?.results || []).slice(0, 3),
-
-      trending: genreId
-        ? (moodMovies?.results || []).slice(3, 13)
-        : (trending?.results || []),
-
-      topRated: topRated?.results || [],
-      upcoming: upcoming?.results || [],
-      webSeries: webseries?.results || []
+      heroPicks: results.slice(0, 3),
+      trending: results.slice(3, 8),
+      topRated: results.slice(8, 13),
+      upcoming: results.slice(13, 18),
+      webSeries: (moodWebSeries?.results || []).filter(
+        s => s.genre_ids?.includes(genreId)
+      ).slice(0, 5)
     };
 
     await homeCache.set(cacheKey, data);
 
     res.json({ success: true, cached: false, data });
+
   } catch (err) {
-    console.error("HOME AGGREGATE ERROR:", err);
-    res.status(500).json({ success: false, message: "Home aggregation failed" });
+    console.error("HOME OPTION-1 ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: "Homepage load failed"
+    });
   }
 });
 
