@@ -40,10 +40,10 @@ router.get("/", async (req, res) => {
 
       const data = {
         heroPicks: (trending?.results || []).slice(0, 3),
-        trending: trending?.results || [],
-        topRated: topRated?.results || [],
-        upcoming: upcoming?.results || [],
-        webSeries: webseries?.results || []
+        trending: trending?.results || [].slice(3, 8),
+        topRated: topRated?.results || [].slice(8, 13),
+        upcoming: upcoming?.results || [].slice(13, 18),
+        webSeries: webseries?.results || []...slice(0, 5)
       };
 
       await homeCache.set(cacheKey, data);
