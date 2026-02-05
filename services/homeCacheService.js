@@ -1,28 +1,58 @@
 const HomeCache = require("../models/HomeCache");
 
-const HOME_TTL = 1000 * 60 * 60 * 24; // 24 hours
+// ⏱️ 24 HOURS TTL (Home related data)
+const HOME_CACHE_TTL = 1000 * 60 * 60 * 24;
 
-const get = async (key) => {
-  const cache = await HomeCache.findOne({ key }).lean();
-  if (!cache) return null;
+const homeCacheService = {
 
-  const isExpired =
-    Date.now() - new Date(cache.lastUpdated).getTime() > HOME_TTL;
+  // 🔍 GET cache
+  async get(key) {
+    try {
+      const cacheDoc = await HomeCache.findOne({ key });
 
-  if (isExpired) return null;
-  return cache.data;
+      if (!cacheDoc) return null;
+
+      const age = Date.now() - new Date(cacheDoc.lastUpdated).getTime();
+
+      // ❌ Expired
+      if (age > HOME_CACHE_TTL) {
+        await HomeCache.deleteOne({ key });
+        return null;
+      }
+
+      // ✅ Valid cache
+      return cacheDoc.data;
+
+    } catch (err) {
+      console.error("HomeCache GET Error:", err.message);
+      return null;
+    }
+  },
+
+  // 💾 SET cache
+  async set(key, data) {
+    try {
+      await HomeCache.findOneAndUpdate(
+        { key },
+        {
+          data,
+          lastUpdated: new Date()
+        },
+        { upsert: true, new: true }
+      );
+    } catch (err) {
+      console.error("HomeCache SET Error:", err.message);
+    }
+  },
+
+  // 🧹 Optional manual clear
+  async clear(key) {
+    try {
+      await HomeCache.deleteOne({ key });
+    } catch (err) {
+      console.error("HomeCache CLEAR Error:", err.message);
+    }
+  }
 };
 
-const set = async (key, data) => {
-  await HomeCache.findOneAndUpdate(
-    { key },
-    {
-      key,
-      data,
-      lastUpdated: new Date()
-    },
-    { upsert: true, new: true }
-  );
-};
-
-module.exports = { get, set };
+module.exports = homeCacheService;
