@@ -5,21 +5,55 @@ const getDetailedAiAnalysis = async (movieTitle, lang = 'en') => {
     const languageText = lang === 'hi' ? "Hindi" : "English";
 
     try {
-        const prompt = `Movie: "${movieTitle}". You are a movie expert. Generate a detailed analysis in ${languageText}.
-Format strictly as JSON:
-{
-  "hits": ["Point 1", "Point 2"],
-  "misses": ["Point 1", "Point 2"],
-  "paychecks": [
-    {"actor": "Name", "role": "Character", "estimated_salary": "Amount"}
-  ],
-  "bts": ["Fact 1", "Fact 2"]
-}
-Rules:
-- Realistic Indian salary estimates (in Crores if Indian movie).
-- No explanation text before or after JSON.
-- Write all text in ${languageText}.`;
+        const prompt = `Movie: "${movieTitle}". You are a top Indian movie critic and AI analyst for "Filmi Bharat".
 
+Generate a DETAILED, CINEMATIC analysis in ${languageText}. Return ONLY valid JSON — no extra text.
+
+{
+  "summary": "Big, engaging, italic-style summary quote (2-3 lines)",
+  "story_blueprint": "Large italic quote describing the core story and theme",
+  "performance_spotlight": [
+    {"actor": "Full Name", "role": "Character Name", "description": "2-3 sentences about their performance and contribution"}
+  ],
+  "behind_the_scenes": [
+    "Fact 1 about VFX, shooting, or making",
+    "Fact 2 about locations, challenges, or trivia"
+  ],
+  "hits": [
+    "Positive point 1 (e.g. Stunning cinematography)",
+    "Positive point 2 (e.g. Powerhouse performances)"
+  ],
+  "misses": [
+    "Criticism 1 (e.g. Pacing dips in second half)",
+    "Criticism 2 (e.g. Some scenes feel stretched)"
+  ],
+  "data_deep_dive": {
+    "budget": "₹X Crore (estimated)",
+    "box_office": "₹X Crore+",
+    "verdict": "BLOCKBUSTER / HIT / AVERAGE / FLOP"
+  },
+  "who_should_watch": {
+    "horror_lovers": 95,
+    "critics": 80,
+    "mass_audience": 90
+  },
+  "star_paychecks": [
+    {"actor": "Name", "role": "Character", "estimated_salary": "₹X Crore"},
+    {"actor": "Name", "role": "Character", "estimated_salary": "₹X Crore"}
+  ],
+  "credits": {
+    "director": "Name",
+    "box_office": "₹X crore+"
+  }
+}
+
+Rules:
+- Use realistic Indian movie estimates for salary, budget, box office.
+- All text in ${languageText}.
+- Make it cinematic, engaging, detailed — like a professional critic.
+- NEVER leave any array or field empty — always fill with realistic content.
+- Add disclaimer for salaries/box office: "Estimated based on reports".
+`;
         const response = await groq.chat.completions.create({
             messages: [{ role: "user", content: prompt }],
             model: "mixtral-8x7b-32768",
