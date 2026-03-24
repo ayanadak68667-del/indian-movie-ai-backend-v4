@@ -22,6 +22,9 @@ app.use('/api/movies', require('./routes/movie'));
 app.use('/api/ai-chat', require('./routes/aiChat'));
 app.use("/api/home", require("./routes/home"));
 
+// Admin Panel Route
+app.use("/api/admin", require("./routes/admin")); 
+
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled Error:', err);
