@@ -56,7 +56,7 @@ Rules:
 `;
         const response = await groq.chat.completions.create({
             messages: [{ role: "user", content: prompt }],
-            model: "mixtral-8x7b-32768",
+            model: "llama-3.3-70b-versatile"
             response_format: { type: "json_object" }
         });
 
