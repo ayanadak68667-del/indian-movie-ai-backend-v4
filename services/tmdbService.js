@@ -127,7 +127,7 @@ class TMDBService {
   // 🎬 Movie Details + Credits + Videos
   async getMovieDetails(movieId, lang = "en") {
     return safeGet(`${TMDB_BASE}/movie/${movieId}`, {
-      append_to_response: "credits,videos",
+      append_to_response: "credits,videos,images",
       language: mapLang(lang)
     });
   }
