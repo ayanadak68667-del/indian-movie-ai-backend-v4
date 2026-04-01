@@ -6,7 +6,8 @@ const youtubeService = require("../services/youtubeService");
 const { getDetailedAiAnalysis } = require("../services/groqService");
 const mongoCache = require("../services/mongoCacheService");
 
-const CACHE_TTL = 0; // ✅ 30 days cache for movie details
+const CACHE_TTL = 0; // 🔥 TEMP disable cache for testing
+
 // ১️⃣ GET /api/movies/trending
 router.get("/trending", async (req, res) => {
   try {
@@ -18,7 +19,7 @@ router.get("/trending", async (req, res) => {
   }
 });
 
-// ২️⃣ GET /api/movies/discover?genre=&year=
+// ২️⃣ GET /api/movies/discover
 router.get("/discover", async (req, res) => {
   try {
     const { genre, year, lang = "en" } = req.query;
@@ -29,7 +30,7 @@ router.get("/discover", async (req, res) => {
   }
 });
 
-// ৩️⃣ GET /api/movies/search?q=
+// ৩️⃣ GET /api/movies/search
 router.get("/search", async (req, res) => {
   try {
     const query = (req.query.q || "").trim();
@@ -52,7 +53,7 @@ router.get("/movie/:id", async (req, res) => {
   const cacheKey = `${movieId}_${lang}`;
 
   try {
-    // 🔁 ক্যাশ চেক
+    // 🔁 CACHE CHECK
     const cachedMovie = await mongoCache.get(cacheKey);
 
     const isStale = cachedMovie?.lastUpdated
@@ -66,23 +67,49 @@ router.get("/movie/:id", async (req, res) => {
       });
     }
 
-    // 🎬 TMDB ডিটেইলস
+    // 🎬 TMDB DATA
     const movie = await tmdbService.getMovieDetails(movieId, lang);
     if (!movie) throw new Error("TMDB details failed");
 
-    // 🪪 ভারতের সার্টিফিকেশন
+    // 🪪 Certification
     const releaseDates = await tmdbService.getReleaseDates(movieId);
     const indiaRelease = releaseDates?.results?.find(r => r.iso_3166_1 === "IN");
     const cert = indiaRelease?.release_dates?.[0]?.certification || "UA 13+";
 
-    // 🤖 AI + 📺 YouTube + 📡 OTT একসাথে ফেচ
-    const [aiAnalysis, media, watchProviders] = await Promise.all([
+    // 🤖 AI + 📺 MEDIA + 📡 OTT
+    const [aiAnalysisRaw, mediaRaw, watchProvidersRaw] = await Promise.all([
       getDetailedAiAnalysis(movie.title, lang).catch(() => ({})),
-      youtubeService.getMovieMedia(movie.title, lang).catch(() => ({ trailerId: "", playlist: [] })),
+      youtubeService.getMovieMedia(movie.title, lang).catch(() => ({})),
       tmdbService.getWatchProviders(movieId).catch(() => ({}))
     ]);
 
-    // 📊 মেটা ব্যাজ ডেটা
+    // 🔥 SAFE AI FALLBACK (VERY IMPORTANT)
+    const aiAnalysis = {
+      summary: aiAnalysisRaw.summary || "",
+      story_blueprint: aiAnalysisRaw.story_blueprint || "",
+      performance_spotlight: aiAnalysisRaw.performance_spotlight || [],
+      behind_the_scenes: aiAnalysisRaw.behind_the_scenes || [],
+      hits: aiAnalysisRaw.hits || [],
+      misses: aiAnalysisRaw.misses || [],
+      data_deep_dive: aiAnalysisRaw.data_deep_dive || {
+        budget: "",
+        box_office: "",
+        verdict: ""
+      },
+      star_paychecks: aiAnalysisRaw.star_paychecks || [],
+      credits: aiAnalysisRaw.credits || {
+        director: "",
+        box_office: ""
+      }
+    };
+
+    // 🎥 SAFE MEDIA
+    const media = {
+      trailerId: mediaRaw.trailerId || "",
+      playlist: mediaRaw.playlist || []
+    };
+
+    // 📊 META
     const meta = {
       isTrending: (movie.popularity || 0) > 100,
       isNew: movie.release_date
@@ -96,15 +123,15 @@ router.get("/movie/:id", async (req, res) => {
     const movieData = {
       tmdbId: cacheKey,
       details: movie,
-      aiAnalysis,
+      aiAnalysis, // ✅ FIXED
       trailerId: media.trailerId,
       playlist: media.playlist,
-      watchProviders,
+      watchProviders: watchProvidersRaw || {},
       meta,
       lastUpdated: new Date()
     };
 
-    // 💾 ক্যাশে সেভ/আপডেট
+    // 💾 SAVE CACHE
     await mongoCache.set(movieData);
 
     return res.json({
@@ -113,6 +140,7 @@ router.get("/movie/:id", async (req, res) => {
     });
 
   } catch (error) {
+    console.error("Movie API Error:", error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 });
