@@ -55,10 +55,10 @@ Rules:
 - Add disclaimer for salaries/box office: "Estimated based on reports".
 `;
         const response = await groq.chat.completions.create({
-            messages: [{ role: "user", content: prompt }],
-            model: "llama-3.3-70b-versatile"
-            response_format: { type: "json_object" }
-        });
+  messages: [{ role: "user", content: prompt }],
+  model: "llama-3.3-70b-versatile",
+  response_format: { type: "json_object" }
+});
 
         const raw = response.choices?.[0]?.message?.content || "{}";
 
