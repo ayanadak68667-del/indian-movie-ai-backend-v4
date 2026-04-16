@@ -1,75 +1,103 @@
-const mongoose = require('mongoose');
 
-const movieSchema = new mongoose.Schema({
-  // Language-aware cache key: "123_en", "123_hi"
-  tmdbId: { type: String, required: true, unique: true },
+const mongoose = require("mongoose");
 
-  // TMDB থেকে পুরো ডিটেইলস অবজেক্ট
-  details: { type: Object, required: true },
-
-  // আপডেটেড Groq AI Analysis (এখানে তোমার ২য় কোডটি বসানো হয়েছে)
-  aiAnalysis: {
-    summary: String,
-    story_blueprint: String,
-
-    performance_spotlight: [
-      {
-        actor: String,
-        role: String,
-        description: String
-      }
-    ],
-
-    behind_the_scenes: [String],
-
-    hits: [String],
-    misses: [String],
-
-    data_deep_dive: {
-      budget: String,
-      box_office: String,
-      verdict: String
+const movieSchema = new mongoose.Schema(
+  {
+    // 🔑 Cache Key (indexed + unique)
+    tmdbId: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true
     },
 
-    star_paychecks: [
+    // 🎬 TMDB Data (flexible but controlled)
+    details: {
+      type: Object,
+      required: true
+    },
+
+    // 🤖 AI Analysis
+    aiAnalysis: {
+      summary: { type: String, default: "" },
+      story_blueprint: { type: String, default: "" },
+
+      performance_spotlight: [
+        {
+          actor: String,
+          role: String,
+          description: String
+        }
+      ],
+
+      behind_the_scenes: [String],
+
+      hits: [String],
+      misses: [String],
+
+      data_deep_dive: {
+        budget: String,
+        box_office: String,
+        verdict: String
+      },
+
+      star_paychecks: [
+        {
+          actor: String,
+          role: String,
+          estimated_salary: String
+        }
+      ],
+
+      credits: {
+        director: String,
+        box_office: String
+      }
+    },
+
+    // 🎥 YouTube media
+    trailerId: { type: String, default: "" },
+
+    playlist: [
       {
-        actor: String,
-        role: String,
-        estimated_salary: String
+        id: String,
+        title: String,
+        thumbnail: String
       }
     ],
 
-    credits: {
-      director: String,
-      box_office: String
+    // 📺 OTT Providers
+    watchProviders: {
+      type: Object,
+      default: {}
+    },
+
+    // 📊 UI Meta
+    meta: {
+      isTrending: { type: Boolean, default: false },
+      isNew: { type: Boolean, default: false },
+      popularity: { type: Number, default: 0 },
+      imdbRating: { type: Number, default: 0 },
+      certification: { type: String, default: "" }
+    },
+
+    // ⏳ Cache Timestamp (indexed)
+    lastUpdated: {
+      type: Date,
+      default: Date.now,
+      index: true
     }
   },
+  {
+    minimize: false,
+    timestamps: true // 🔥 createdAt + updatedAt
+  }
+);
 
-  // YouTube media
-  trailerId: String,
-  playlist: [
-    {
-      id: String,
-      title: String,
-      thumbnail: String
-    }
-  ],
+// 🚀 Optional TTL Index (auto delete after 7 days)
+movieSchema.index(
+  { lastUpdated: 1 },
+  { expireAfterSeconds: 60 * 60 * 24 * 7 }
+);
 
-  // OTT / watch providers (TMDB থেকে)
-  watchProviders: { type: Object },
-
-  // UI meta badges
-  meta: {
-    isTrending: Boolean,
-    isNew: Boolean,
-    popularity: Number,
-    imdbRating: Number,
-    certification: String
-  },
-
-  // Cache timestamp
-  lastUpdated: { type: Date, default: Date.now }
-
-}, { minimize: false }); // খালি অবজেক্টও সেভ হবে
-
-module.exports = mongoose.model('Movie', movieSchema);
+module.exports = mongoose.model("Movie", movieSchema);
