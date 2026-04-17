@@ -1,26 +1,28 @@
+
 const HomeCache = require("../models/HomeCache");
 
-// ⏱️ 24 HOURS TTL (Home related data)
+// ⏱️ 24 HOURS TTL
 const HOME_CACHE_TTL = 1000 * 60 * 60 * 24;
 
 const homeCacheService = {
 
-  // 🔍 GET cache
+  // 🔍 GET cache (FAST + SAFE)
   async get(key) {
     try {
-      const cacheDoc = await HomeCache.findOne({ key });
+      const cacheDoc = await HomeCache.findOne({ key }).lean();
 
       if (!cacheDoc) return null;
 
-      const age = Date.now() - new Date(cacheDoc.lastUpdated).getTime();
+      const age =
+        Date.now() - new Date(cacheDoc.lastUpdated).getTime();
 
-      // ❌ Expired
+      // ❌ Expired (NO BLOCKING DELETE)
       if (age > HOME_CACHE_TTL) {
-        await HomeCache.deleteOne({ key });
+        // 🔥 async cleanup (non-blocking)
+        HomeCache.deleteOne({ key }).catch(() => {});
         return null;
       }
 
-      // ✅ Valid cache
       return cacheDoc.data;
 
     } catch (err) {
@@ -29,7 +31,7 @@ const homeCacheService = {
     }
   },
 
-  // 💾 SET cache
+  // 💾 SET cache (SAFE UPSERT)
   async set(key, data) {
     try {
       await HomeCache.findOneAndUpdate(
@@ -38,14 +40,18 @@ const homeCacheService = {
           data,
           lastUpdated: new Date()
         },
-        { upsert: true, new: true }
+        {
+          upsert: true,
+          new: true,
+          setDefaultsOnInsert: true
+        }
       );
     } catch (err) {
       console.error("HomeCache SET Error:", err.message);
     }
   },
 
-  // 🧹 Optional manual clear
+  // 🧹 CLEAR
   async clear(key) {
     try {
       await HomeCache.deleteOne({ key });
