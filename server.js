@@ -1,6 +1,8 @@
 require("express-async-errors");
 require("dotenv").config();
 
+require("./jobs/autoRefresh"); 
+
 const express = require("express");
 const connectDB = require("./config/db");
 const cors = require("cors");
@@ -8,6 +10,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const compression = require("compression");
 const morgan = require("morgan");
+const mongoSanitize = require("express-mongo-sanitize");
 
 const app = express();
 
@@ -17,7 +20,8 @@ const requiredEnv = [
   "TMDB_API_KEY",
   "GROQ_API_KEY",
   "GEMINI_API_KEY",
-  "YOUTUBE_API_KEY"
+  "YOUTUBE_API_KEY",
+  "ADMIN_SECRET"
 ];
 
 requiredEnv.forEach((key) => {
@@ -27,42 +31,94 @@ requiredEnv.forEach((key) => {
   }
 });
 
-// DB connect
-connectDB();
+// ✅ DB connect (safe)
+connectDB().catch((err) => {
+  console.error("❌ DB Connection Failed:", err.message);
+  process.exit(1);
+});
 
-// Middlewares
-app.use(cors());
-app.use(express.json());
+// ========================
+// 🔐 SECURITY MIDDLEWARE
+// ========================
+
+// Helmet (security headers)
 app.use(helmet());
-app.use(compression());
-app.use(morgan("dev"));
 
+// Mongo sanitize (prevent injection)
+app.use(mongoSanitize());
+
+// Secure CORS (⚠️ CHANGE YOUR DOMAIN)
 app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100
+  cors({
+    origin: ["http://localhost:5173"], // 👉 change to your frontend domain
+    credentials: true
   })
 );
 
-// Health check
+// ========================
+// ⚡ PERFORMANCE MIDDLEWARE
+// ========================
+
+// Compression
+app.use(compression());
+
+// Logger
+app.use(morgan("dev"));
+
+// Body parser (limit added)
+app.use(express.json({ limit: "10kb" }));
+
+// ========================
+// 🚦 RATE LIMIT
+// ========================
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 min
+  max: 100,
+  message: {
+    success: false,
+    message: "Too many requests, please try again later."
+  }
+});
+
+app.use(limiter);
+
+// ========================
+// ❤️ HEALTH CHECK
+// ========================
+
 app.get("/", (req, res) => {
   res.send("Filmi Bharat API is running 🚀");
 });
 
-// Routes
+// ========================
+// 📦 ROUTES
+// ========================
+
 app.use("/api/movies", require("./routes/movie"));
 app.use("/api/ai-chat", require("./routes/aiChat"));
 app.use("/api/home", require("./routes/home"));
 app.use("/api/admin", require("./routes/admin"));
 
-// Global error handler
+// ========================
+// ❌ GLOBAL ERROR HANDLER
+// ========================
+
 app.use((err, req, res, next) => {
-  console.error("Unhandled Error:", err.message);
-  res.status(500).json({
+  console.error("❌ Error:", err.stack);
+
+  res.status(err.status || 500).json({
     success: false,
-    message: "Internal Server Error"
+    message:
+      process.env.NODE_ENV === "development"
+        ? err.message
+        : "Internal Server Error"
   });
 });
+
+// ========================
+// 🚀 SERVER START
+// ========================
 
 const PORT = process.env.PORT || 5000;
 
