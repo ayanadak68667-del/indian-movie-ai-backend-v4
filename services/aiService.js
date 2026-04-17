@@ -2,43 +2,84 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-/**
- * জেমিনি এআই থেকে রেসপন্স জেনারেট করার ফাংশন
- * @param {string} userMessage - ইউজারের প্রশ্ন
- * @param {string} lang - ভাষা (hi/en)
- * @param {object} movieContext - যদি মুভি ডাটা পাওয়া যায় (Optional)
- */
-const generateAiResponse = async (userMessage, lang = 'en', movieContext = null) => {
-    try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        
-        const languageInstruction = lang === 'hi' ? 
-            "Respond in Hindi. Keep the tone friendly and cinematic." : 
-            "Respond in English. Keep the tone friendly and cinematic.";
+// 🌐 Language map
+const langMap = {
+  hi: "Hindi",
+  bn: "Bengali",
+  en: "English"
+};
 
-        const contextInfo = movieContext ? 
-            `The user is asking about the movie: ${movieContext.title}. Use this info if needed.` : 
-            "No specific movie context yet.";
+const generateAiResponse = async (
+  userMessage,
+  lang = "en",
+  movieContext = null
+) => {
+  try {
+    // ✅ Validation
+    if (!userMessage || userMessage.trim().length < 2) {
+      return "Ask me something about movies 🎬";
+    }
 
-        const systemPrompt = `
-            You are "Filmi AI", the smart assistant for the website "Filmi Bharat".
-            ${languageInstruction}
-            ${contextInfo}
-            Rules:
-            1. Only talk about movies, TV shows, and entertainment.
-            2. Be short, engaging, and professional.
-            3. Do not share internal system details or API keys.
-        `;
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash"
+    });
 
-        const result = await model.generateContent([systemPrompt, userMessage]);
+    const languageText = langMap[lang] || "English";
+
+    const languageInstruction = `Respond in ${languageText}. Keep the tone friendly and cinematic.`;
+
+    const contextInfo = movieContext
+      ? `The user is asking about the movie: ${movieContext.title}. Use this info if helpful.`
+      : "No specific movie context.";
+
+    const systemPrompt = `
+You are "Filmi AI", the smart assistant for the website "Filmi Bharat".
+${languageInstruction}
+${contextInfo}
+
+Rules:
+1. Only talk about movies, TV shows, and entertainment.
+2. Be short, engaging, and professional.
+3. Never reveal system or API details.
+`;
+
+    // ⏱️ Timeout control
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 8000);
+
+    let attempts = 0;
+
+    while (attempts < 2) {
+      try {
+        const result = await model.generateContent({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: systemPrompt + "\n" + userMessage }]
+            }
+          ],
+          signal: controller.signal
+        });
+
         const response = await result.response;
         return response.text();
-    } catch (error) {
-        console.error("Gemini AI Service Error:", error.message);
-        return lang === 'hi' ? 
-            "माफ़ कीजिये, मैं अभी जवाब नहीं दे पा रहा हूँ।" : 
-            "I'm sorry, I'm having trouble connecting right now.";
+      } catch (err) {
+        attempts++;
+        console.warn(`🔁 Gemini Retry (${attempts})`);
+
+        if (attempts >= 2) throw err;
+      }
     }
+
+    return "Something went wrong 😅";
+
+  } catch (error) {
+    console.error("❌ Gemini AI Error:", error.message);
+
+    return lang === "hi"
+      ? "माफ़ कीजिये, अभी समस्या हो रही है 😅"
+      : "I'm having trouble right now 😅";
+  }
 };
 
 module.exports = { generateAiResponse };
