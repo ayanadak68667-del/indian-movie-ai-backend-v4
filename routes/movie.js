@@ -6,61 +6,72 @@ const youtubeService = require("../services/youtubeService");
 const { getDetailedAiAnalysis } = require("../services/groqService");
 const mongoCache = require("../services/mongoCacheService");
 
-const CACHE_TTL = 0; // 🔥 TEMP disable cache for testing
-
-// ১️⃣ GET /api/movies/trending
+// ১️⃣ TRENDING
 router.get("/trending", async (req, res) => {
   try {
     const lang = req.query.lang || "en";
     const data = await tmdbService.getTrending(lang);
+
     res.json({ success: true, data: data?.results || [] });
   } catch (error) {
+    console.error("Trending Error:", error.message);
     res.status(500).json({ success: false, data: [] });
   }
 });
 
-// ২️⃣ GET /api/movies/discover
+// ২️⃣ DISCOVER
 router.get("/discover", async (req, res) => {
   try {
     const { genre, year, lang = "en" } = req.query;
+
     const data = await tmdbService.discoverMovies({ genre, year, lang });
+
     res.json({ success: true, data: data?.results || [] });
   } catch (error) {
+    console.error("Discover Error:", error.message);
     res.status(500).json({ success: false, data: [] });
   }
 });
 
-// ৩️⃣ GET /api/movies/search
+// ৩️⃣ SEARCH
 router.get("/search", async (req, res) => {
   try {
     const query = (req.query.q || "").trim();
     const lang = req.query.lang || "en";
 
-    if (query.length < 2)
+    if (query.length < 2) {
       return res.json({ success: true, data: [] });
+    }
 
     const data = await tmdbService.searchMulti(query, lang);
+
     res.json({ success: true, data: data?.results || [] });
-  } catch {
+  } catch (error) {
+    console.error("Search Error:", error.message);
     res.status(500).json({ success: false, data: [] });
   }
 });
 
-// ৪️⃣ GET /api/movies/movie/:id
+// ৪️⃣ MOVIE DETAILS
 router.get("/movie/:id", async (req, res) => {
   const movieId = req.params.id;
   const lang = req.query.lang || "en";
+
+  // ✅ Validation
+  if (!movieId || isNaN(movieId)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid movie ID"
+    });
+  }
+
   const cacheKey = `${movieId}_${lang}`;
 
   try {
-    // 🔁 CACHE CHECK
+    // 🔁 CACHE CHECK (TTL handled in service)
     const cachedMovie = await mongoCache.get(cacheKey);
 
-    const isStale = cachedMovie?.lastUpdated
-      ? Date.now() - new Date(cachedMovie.lastUpdated).getTime() > CACHE_TTL
-      : true;
-
-    if (cachedMovie && !isStale) {
+    if (cachedMovie) {
       return res.json({
         success: true,
         data: { ...cachedMovie, cached: true }
@@ -73,37 +84,31 @@ router.get("/movie/:id", async (req, res) => {
 
     // 🪪 Certification
     const releaseDates = await tmdbService.getReleaseDates(movieId);
-    const indiaRelease = releaseDates?.results?.find(r => r.iso_3166_1 === "IN");
-    const cert = indiaRelease?.release_dates?.[0]?.certification || "UA 13+";
+    const indiaRelease = releaseDates?.results?.find(
+      (r) => r.iso_3166_1 === "IN"
+    );
+
+    const cert =
+      indiaRelease?.release_dates?.[0]?.certification || "UA 13+";
 
     // 🤖 AI + 📺 MEDIA + 📡 OTT
-    const [aiAnalysisRaw, mediaRaw, watchProvidersRaw] = await Promise.all([
-      getDetailedAiAnalysis(movie.title, lang).catch(() => ({})),
-      youtubeService.getMovieMedia(movie.title, lang).catch(() => ({})),
-      tmdbService.getWatchProviders(movieId).catch(() => ({}))
-    ]);
+    const [aiAnalysisRaw, mediaRaw, watchProvidersRaw] =
+      await Promise.all([
+        getDetailedAiAnalysis(
+          `${movie.title} ${movie.release_date}`,
+          lang
+        ).catch(() => ({})),
 
-    // 🔥 SAFE AI FALLBACK (VERY IMPORTANT)
-    const aiAnalysis = {
-      summary: aiAnalysisRaw.summary || "",
-      story_blueprint: aiAnalysisRaw.story_blueprint || "",
-      performance_spotlight: aiAnalysisRaw.performance_spotlight || [],
-      behind_the_scenes: aiAnalysisRaw.behind_the_scenes || [],
-      hits: aiAnalysisRaw.hits || [],
-      misses: aiAnalysisRaw.misses || [],
-      data_deep_dive: aiAnalysisRaw.data_deep_dive || {
-        budget: "",
-        box_office: "",
-        verdict: ""
-      },
-      star_paychecks: aiAnalysisRaw.star_paychecks || [],
-      credits: aiAnalysisRaw.credits || {
-        director: "",
-        box_office: ""
-      }
-    };
+        youtubeService
+          .getMovieMedia(movie.title, lang)
+          .catch(() => ({})),
 
-    // 🎥 SAFE MEDIA
+        tmdbService.getWatchProviders(movieId).catch(() => ({}))
+      ]);
+
+    // 🔥 SAFE AI
+    const aiAnalysis = aiAnalysisRaw || {};
+
     const media = {
       trailerId: mediaRaw.trailerId || "",
       playlist: mediaRaw.playlist || []
@@ -123,7 +128,7 @@ router.get("/movie/:id", async (req, res) => {
     const movieData = {
       tmdbId: cacheKey,
       details: movie,
-      aiAnalysis, // ✅ FIXED
+      aiAnalysis,
       trailerId: media.trailerId,
       playlist: media.playlist,
       watchProviders: watchProvidersRaw || {},
@@ -131,8 +136,8 @@ router.get("/movie/:id", async (req, res) => {
       lastUpdated: new Date()
     };
 
-    // 💾 SAVE CACHE
-    await mongoCache.set(movieData);
+    // 💾 CACHE SAVE (non-blocking)
+    mongoCache.set(movieData);
 
     return res.json({
       success: true,
@@ -141,7 +146,11 @@ router.get("/movie/:id", async (req, res) => {
 
   } catch (error) {
     console.error("Movie API Error:", error.message);
-    res.status(500).json({ success: false, message: error.message });
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch movie"
+    });
   }
 });
 
