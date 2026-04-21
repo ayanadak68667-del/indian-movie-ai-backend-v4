@@ -1,10 +1,15 @@
- const cron = require("node-cron");
+const cron = require("node-cron");
 const tmdbService = require("../services/tmdbService");
 const homeCache = require("../services/homeCacheService");
 const { getDetailedAiAnalysis } = require("../services/groqService");
 const mongoCache = require("../services/mongoCacheService");
 
-// 🔥 Helper: safe async run
+// 📊 API Usage Controls
+let aiCallsToday = 0;
+let lastResetDate = new Date().toDateString();
+const MAX_AI_CALLS_PER_DAY = 20;
+
+// 🔒 Safe runner
 const safeRun = async (label, fn) => {
   try {
     console.log(`⏳ Running job: ${label}`);
@@ -15,76 +20,82 @@ const safeRun = async (label, fn) => {
   }
 };
 
-/* =========================
-   🎬 TRENDING REFRESH (Every 10 min)
-========================= */
-cron.schedule("*/10 * * * *", () => {
+// 🔁 Auto reset (if server didn't restart)
+const checkAndResetCounter = () => {
+  const today = new Date().toDateString();
+  if (today !== lastResetDate) {
+    aiCallsToday = 0;
+    lastResetDate = today;
+    console.log("📅 AI Call counter auto-reset.");
+  }
+};
+
+/* ==========================================
+   🎬 TRENDING REFRESH (Every 30 min)
+   ========================================== */
+cron.schedule("*/30 * * * *", () => {
   safeRun("Trending Refresh", async () => {
     const data = await tmdbService.getTrending();
-    if (!data) return;
+    if (!data?.results?.length) return;
 
-    await homeCache.set("home_trending", data.results || []);
+    await homeCache.set("home_trending", data.results);
   });
 });
 
-/* =========================
-   🏠 HOMEPAGE REFRESH (Every 30 min)
-========================= */
-cron.schedule("*/30 * * * *", () => {
-  safeRun("Homepage Refresh", async () => {
-    const [trending, topRated, upcoming, webseries] = await Promise.all([
-      tmdbService.getTrending(),
-      tmdbService.getTopRated(),
-      tmdbService.getUpcoming(),
-      tmdbService.getPopularWebSeries()
-    ]);
-
-    const data = {
-      heroPicks: (trending?.results || []).slice(0, 3),
-      trending: (trending?.results || []).slice(3, 8),
-      topRated: (topRated?.results || []).slice(0, 5),
-      upcoming: (upcoming?.results || []).slice(0, 5),
-      webSeries: (webseries?.results || []).slice(0, 5)
-    };
-
-    await homeCache.set("home_default", data);
-  });
-});
-
-/* =========================
+/* ==========================================
    🤖 AI PRE-CACHE (Every 1 hour)
-========================= */
+   ========================================== */
 cron.schedule("0 * * * *", () => {
   safeRun("AI Pre-cache", async () => {
-    const trending = await tmdbService.getTrending();
+    checkAndResetCounter();
 
-    const movies = (trending?.results || []).slice(0, 5);
+    // 🔒 Daily limit check
+    if (aiCallsToday >= MAX_AI_CALLS_PER_DAY) {
+      console.log("⚠️ Daily AI limit reached. Skipping.");
+      return;
+    }
+
+    const trending = await tmdbService.getTrending();
+    if (!trending?.results?.length) return;
+
+    const movies = trending.results.slice(0, 2); // limit 2 movies
 
     for (const m of movies) {
+      if (aiCallsToday >= MAX_AI_CALLS_PER_DAY) break;
+
       const key = `${m.id}_en`;
-
       const existing = await mongoCache.get(key);
-      if (existing) continue; // skip if cached
 
-      const ai = await getDetailedAiAnalysis(m.title, "en").catch(() => ({}));
+      // 🔍 Skip if already has AI data
+      if (existing?.aiAnalysis?.summary) continue;
+
+      const ai = await getDetailedAiAnalysis(m.title, "en").catch(() => null);
+
+      if (!ai) continue;
 
       await mongoCache.set({
         tmdbId: key,
-        details: {},
+        details: {}, // ✅ REQUIRED FIELD FIX
         aiAnalysis: ai,
         lastUpdated: new Date()
       });
+
+      aiCallsToday++;
+
+      console.log(
+        `🤖 Cached: ${m.title} (${aiCallsToday}/${MAX_AI_CALLS_PER_DAY})`
+      );
     }
   });
 });
 
-console.log("🔥 Auto Refresh Jobs Started");
-    // 💾 Save to cache
-    await homeCache.set("home_default", data);
-
-    console.log("✅ Homepage Auto Refreshed");
-
-  } catch (err) {
-    console.error("❌ Auto Refresh Error:", err.message);
-  }
+/* ==========================================
+   🌙 HARD RESET (Midnight)
+   ========================================== */
+cron.schedule("0 0 * * *", () => {
+  aiCallsToday = 0;
+  lastResetDate = new Date().toDateString();
+  console.log("🌙 Midnight reset: AI counter cleared.");
 });
+
+console.log("🚀 Auto Refresh Jobs Started (Optimized Mode)");
