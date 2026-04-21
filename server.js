@@ -14,6 +14,10 @@ const mongoSanitize = require("express-mongo-sanitize");
 
 const app = express();
 
+// ✅ Render বা অন্যান্য প্রক্সি সার্ভারের জন্য এই লাইনটি অবশ্যই যোগ করুন
+// এটি আপনার express-rate-limit এর 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR' এররটি দূর করবে।
+app.set('trust proxy', 1);
+
 // ✅ ENV validation
 const requiredEnv = [
   "MONGO_URI",
