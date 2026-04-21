@@ -1,4 +1,3 @@
-
 const mongoose = require("mongoose");
 
 const movieSchema = new mongoose.Schema(
@@ -8,20 +7,17 @@ const movieSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
-      index: true
+      // index: true (unique: true থাকলে আলাদা করে index দরকার নেই)
     },
 
-    // 🎬 TMDB Data (flexible but controlled)
     details: {
       type: Object,
       required: true
     },
 
-    // 🤖 AI Analysis
     aiAnalysis: {
       summary: { type: String, default: "" },
       story_blueprint: { type: String, default: "" },
-
       performance_spotlight: [
         {
           actor: String,
@@ -29,18 +25,14 @@ const movieSchema = new mongoose.Schema(
           description: String
         }
       ],
-
       behind_the_scenes: [String],
-
       hits: [String],
       misses: [String],
-
       data_deep_dive: {
         budget: String,
         box_office: String,
         verdict: String
       },
-
       star_paychecks: [
         {
           actor: String,
@@ -48,16 +40,19 @@ const movieSchema = new mongoose.Schema(
           estimated_salary: String
         }
       ],
-
       credits: {
         director: String,
         box_office: String
+      },
+      // ✅ আমরা আগের আলোচনায় যে missing field টি পেয়েছিলাম সেটি এখানে অ্যাড করে দিলাম
+      who_should_watch: {
+        horror_lovers: { type: Number, default: 0 },
+        critics: { type: Number, default: 0 },
+        mass_audience: { type: Number, default: 0 }
       }
     },
 
-    // 🎥 YouTube media
     trailerId: { type: String, default: "" },
-
     playlist: [
       {
         id: String,
@@ -66,13 +61,11 @@ const movieSchema = new mongoose.Schema(
       }
     ],
 
-    // 📺 OTT Providers
     watchProviders: {
       type: Object,
       default: {}
     },
 
-    // 📊 UI Meta
     meta: {
       isTrending: { type: Boolean, default: false },
       isNew: { type: Boolean, default: false },
@@ -81,20 +74,20 @@ const movieSchema = new mongoose.Schema(
       certification: { type: String, default: "" }
     },
 
-    // ⏳ Cache Timestamp (indexed)
+    // ⏳ Cache Timestamp
     lastUpdated: {
       type: Date,
-      default: Date.now,
-      index: true
+      default: Date.now
+      // 🚀 এখান থেকে index: true সরিয়ে ফেলা হয়েছে কারণ নিচে TTL Index আছে
     }
   },
   {
     minimize: false,
-    timestamps: true // 🔥 createdAt + updatedAt
+    timestamps: true 
   }
 );
 
-// 🚀 Optional TTL Index (auto delete after 7 days)
+// 🚀 TTL Index (এটি ৭ দিন পর ডেটা অটো ডিলিট করবে এবং এটাই একমাত্র ইনডেক্স হবে lastUpdated এর জন্য)
 movieSchema.index(
   { lastUpdated: 1 },
   { expireAfterSeconds: 60 * 60 * 24 * 7 }
