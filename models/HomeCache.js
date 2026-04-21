@@ -1,4 +1,3 @@
-
 const mongoose = require("mongoose");
 
 const homeCacheSchema = new mongoose.Schema(
@@ -6,7 +5,7 @@ const homeCacheSchema = new mongoose.Schema(
     key: {
       type: String,
       required: true,
-      unique: true,
+      unique: true
     },
 
     data: {
@@ -14,11 +13,10 @@ const homeCacheSchema = new mongoose.Schema(
       required: true
     },
 
-    // 🔥 TTL based on lastUpdated (NOT createdAt)
+    // 🔥 TTL based on lastUpdated
     lastUpdated: {
       type: Date,
-      default: Date.now,
-      index: true
+      default: Date.now
     }
   },
   {
