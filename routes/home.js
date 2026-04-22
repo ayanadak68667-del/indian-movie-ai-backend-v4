@@ -4,6 +4,19 @@ const router = express.Router();
 const tmdbService = require("../services/tmdbService");
 const homeCache = require("../services/homeCacheService");
 
+// 🖼️ Image Base URL & Transformer function
+const IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
+
+const transformMovie = (m) => ({
+  ...m,
+  poster: m.poster_path
+    ? `${IMAGE_BASE}${m.poster_path}`
+    : null,
+  backdrop: m.backdrop_path
+    ? `${IMAGE_BASE}${m.backdrop_path}`
+    : null
+});
+
 // 🎭 Mood → Genre map
 const MOOD_GENRES = {
   horror: 27,
@@ -42,12 +55,13 @@ router.get("/", async (req, res) => {
           tmdbService.getPopularWebSeries()
         ]);
 
+      // 🔥 Added .map(transformMovie)
       data = {
-        heroPicks: (trending?.results || []).slice(0, 3).map(transformMovie),,
-        trending: (trending?.results || []).slice(3, 8).map(transformMovie),,
-        topRated: (topRated?.results || []).slice(0, 5).map(transformMovie),,
-        upcoming: (upcoming?.results || []).slice(0, 5).map(transformMovie),,
-        webSeries: (webseries?.results || []).slice(0, 5).map(transformMovie),
+        heroPicks: (trending?.results || []).slice(0, 3).map(transformMovie),
+        trending: (trending?.results || []).slice(3, 8).map(transformMovie),
+        topRated: (topRated?.results || []).slice(0, 5).map(transformMovie),
+        upcoming: (upcoming?.results || []).slice(0, 5).map(transformMovie),
+        webSeries: (webseries?.results || []).slice(0, 5).map(transformMovie)
       };
     }
 
@@ -61,14 +75,16 @@ router.get("/", async (req, res) => {
 
       const results = moodMovies?.results || [];
 
+      // 🔥 Added .map(transformMovie)
       data = {
-        heroPicks: results.slice(0, 3).map(transformMovie),,
-        trending: results.slice(3, 8).map(transformMovie),,
-        topRated: results.slice(8, 13).map(transformMovie),,
-        upcoming: results.slice(13, 18).map(transformMovie),,
-        webSeries: (moodWebSeries?.results || []).map(transformMovie),
+        heroPicks: results.slice(0, 3).map(transformMovie),
+        trending: results.slice(3, 8).map(transformMovie),
+        topRated: results.slice(8, 13).map(transformMovie),
+        upcoming: results.slice(13, 18).map(transformMovie),
+        webSeries: (moodWebSeries?.results || [])
           .filter((s) => s.genre_ids?.includes(genreId))
           .slice(0, 5)
+          .map(transformMovie)
       };
     }
 
@@ -98,7 +114,8 @@ const sectionHandler = (key, fetchFn) => async (req, res) => {
       return res.json({ success: true, cached: true, data: cached });
     }
 
-    const data = (await fetchFn())?.results || [];
+    // 🔥 Added .map(transformMovie) for individual sections as well
+    const data = ((await fetchFn())?.results || []).map(transformMovie);
 
     homeCache.set(key, data); // ⚡ non-blocking
 
