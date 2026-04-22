@@ -43,11 +43,11 @@ router.get("/", async (req, res) => {
         ]);
 
       data = {
-        heroPicks: (trending?.results || []).slice(0, 3),
-        trending: (trending?.results || []).slice(3, 8),
-        topRated: (topRated?.results || []).slice(0, 5),
-        upcoming: (upcoming?.results || []).slice(0, 5),
-        webSeries: (webseries?.results || []).slice(0, 5)
+        heroPicks: (trending?.results || []).slice(0, 3).map(transformMovie),,
+        trending: (trending?.results || []).slice(3, 8).map(transformMovie),,
+        topRated: (topRated?.results || []).slice(0, 5).map(transformMovie),,
+        upcoming: (upcoming?.results || []).slice(0, 5).map(transformMovie),,
+        webSeries: (webseries?.results || []).slice(0, 5).map(transformMovie),
       };
     }
 
@@ -62,11 +62,11 @@ router.get("/", async (req, res) => {
       const results = moodMovies?.results || [];
 
       data = {
-        heroPicks: results.slice(0, 3),
-        trending: results.slice(3, 8),
-        topRated: results.slice(8, 13),
-        upcoming: results.slice(13, 18),
-        webSeries: (moodWebSeries?.results || [])
+        heroPicks: results.slice(0, 3).map(transformMovie),,
+        trending: results.slice(3, 8).map(transformMovie),,
+        topRated: results.slice(8, 13).map(transformMovie),,
+        upcoming: results.slice(13, 18).map(transformMovie),,
+        webSeries: (moodWebSeries?.results || []).map(transformMovie),
           .filter((s) => s.genre_ids?.includes(genreId))
           .slice(0, 5)
       };
