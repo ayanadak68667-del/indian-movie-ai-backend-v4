@@ -54,7 +54,7 @@ app.use(mongoSanitize());
 // Secure CORS (⚠️ CHANGE YOUR DOMAIN)
 app.use(
   cors({
-    origin: ["http://localhost:5173"], // 👉 change to your frontend domain
+    origin: ["http://raatkibaat.in"], // 👉 change to your frontend domain
     credentials: true
   })
 );
