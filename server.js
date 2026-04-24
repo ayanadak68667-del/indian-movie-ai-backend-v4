@@ -54,7 +54,13 @@ app.use(mongoSanitize());
 // Secure CORS (⚠️ CHANGE YOUR DOMAIN)
 app.use(
   cors({
-    origin: ["http://raatkibaat.in"], // 👉 change to your frontend domain
+    origin: [
+      "http://localhost:5173", // লোকাল ডেভেলপমেন্টের জন্য
+      "http://raatkibaat.in",
+      "https://raatkibaat.in",
+      "http://www.raatkibaat.in",
+      "https://www.raatkibaat.in"
+    ],
     credentials: true
   })
 );
