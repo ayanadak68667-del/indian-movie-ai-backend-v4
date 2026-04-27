@@ -60,6 +60,7 @@ app.use(
       "https://raatkibaat.in",
       "http://www.raatkibaat.in",
       "https://www.raatkibaat.in"
+      "https://horizons.hostinger.com"
     ],
     credentials: true
   })
