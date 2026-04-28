@@ -6,13 +6,23 @@ const youtubeService = require("../services/youtubeService");
 const { getDetailedAiAnalysis } = require("../services/groqService");
 const mongoCache = require("../services/mongoCacheService");
 
+// 🖼️ Image Base URL & Transformer function (View More পেজের ছবির জন্য)
+const IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
+const transformMovie = (m) => ({
+  ...m,
+  poster: m.poster_path ? `${IMAGE_BASE}${m.poster_path}` : null,
+  backdrop: m.backdrop_path ? `${IMAGE_BASE}${m.backdrop_path}` : null
+});
+
 // ১️⃣ TRENDING
 router.get("/trending", async (req, res) => {
   try {
     const lang = req.query.lang || "en";
     const data = await tmdbService.getTrending(lang);
-
-    res.json({ success: true, data: data?.results || [] });
+    
+    // ছবিগুলো ফরম্যাট করা হচ্ছে
+    const formattedData = (data?.results || []).map(transformMovie);
+    res.json({ success: true, data: formattedData });
   } catch (error) {
     console.error("Trending Error:", error.message);
     res.status(500).json({ success: false, data: [] });
@@ -23,10 +33,10 @@ router.get("/trending", async (req, res) => {
 router.get("/discover", async (req, res) => {
   try {
     const { genre, year, lang = "en" } = req.query;
-
     const data = await tmdbService.discoverMovies({ genre, year, lang });
-
-    res.json({ success: true, data: data?.results || [] });
+    
+    const formattedData = (data?.results || []).map(transformMovie);
+    res.json({ success: true, data: formattedData });
   } catch (error) {
     console.error("Discover Error:", error.message);
     res.status(500).json({ success: false, data: [] });
@@ -44,8 +54,8 @@ router.get("/search", async (req, res) => {
     }
 
     const data = await tmdbService.searchMulti(query, lang);
-
-    res.json({ success: true, data: data?.results || [] });
+    const formattedData = (data?.results || []).map(transformMovie);
+    res.json({ success: true, data: formattedData });
   } catch (error) {
     console.error("Search Error:", error.message);
     res.status(500).json({ success: false, data: [] });
@@ -68,19 +78,26 @@ router.get("/movie/:id", async (req, res) => {
   const cacheKey = `${movieId}_${lang}`;
 
   try {
-    // 🔁 CACHE CHECK (TTL handled in service)
+    // 🔁 CACHE CHECK
     const cachedMovie = await mongoCache.get(cacheKey);
 
     if (cachedMovie) {
+      // 🔥 FIX FOR MONGOOSE SPREAD BUG 🔥
+      // Mongoose ডকুমেন্টকে সাধারণ অবজেক্টে পরিণত করা হচ্ছে যাতে ডেটা লস না হয়
+      const safeCache = typeof cachedMovie.toObject === 'function' ? cachedMovie.toObject() : cachedMovie;
+      const finalData = safeCache.details ? safeCache : (safeCache.data || safeCache);
+
       return res.json({
         success: true,
-        data: { ...cachedMovie, cached: true }
+        data: { ...finalData, cached: true }
       });
     }
 
     // 🎬 TMDB DATA
     const movie = await tmdbService.getMovieDetails(movieId, lang);
     if (!movie) throw new Error("TMDB details failed");
+    
+    const formattedMovie = transformMovie(movie);
 
     // 🪪 Certification
     const releaseDates = await tmdbService.getReleaseDates(movieId);
@@ -110,8 +127,8 @@ router.get("/movie/:id", async (req, res) => {
     const aiAnalysis = aiAnalysisRaw || {};
 
     const media = {
-      trailerId: mediaRaw.trailerId || "",
-      playlist: mediaRaw.playlist || []
+      trailerId: mediaRaw?.trailerId || "",
+      playlist: mediaRaw?.playlist || []
     };
 
     // 📊 META
@@ -127,7 +144,7 @@ router.get("/movie/:id", async (req, res) => {
 
     const movieData = {
       tmdbId: cacheKey,
-      details: movie,
+      details: formattedMovie,
       aiAnalysis,
       trailerId: media.trailerId,
       playlist: media.playlist,
