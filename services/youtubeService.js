@@ -7,7 +7,7 @@ const API_KEY = process.env.YOUTUBE_API_KEY;
 const langMap = {
   hi: "Hindi",
   bn: "Bengali",
-  en: "English"
+  en: "Indian" // "English" এর বদলে "Indian" করা হলো যাতে বিদেশি মুভি কম আসে
 };
 
 // 🔁 Retry wrapper
@@ -32,11 +32,12 @@ const getMovieMedia = async (movieTitle, lang = "en") => {
       return { trailerId: "", playlist: [] };
     }
 
-    const langSuffix = langMap[lang] || "English";
+    const langSuffix = langMap[lang] || "Indian";
 
-    // 🎯 Better query (accuracy improved)
-    const trailerQuery = `${movieTitle} official trailer ${langSuffix}`;
-    const songsQuery = `${movieTitle} movie songs ${langSuffix}`;
+    // 🎯 Better & Stricter query (accuracy improved)
+    // "movie" শব্দটি যোগ করা হলো যাতে আজেবাজে ভিডিও না আসে
+    const trailerQuery = `${movieTitle} ${langSuffix} movie official trailer`;
+    const songsQuery = `${movieTitle} ${langSuffix} movie official video song`;
 
     // ⚡ Parallel requests
     const [trailerRes, songsRes] = await Promise.all([
@@ -49,7 +50,7 @@ const getMovieMedia = async (movieTitle, lang = "en") => {
           maxResults: 1,
           key: API_KEY,
           type: "video",
-          videoCategoryId: "1", // 🎬 Film category
+          // videoCategoryId: "1" ❌ এটি বাদ দেওয়া হলো কারণ T-Series/Zee Music মিউজিক ক্যাটাগরিতে ট্রেইলার ছাড়ে
           order: "relevance"
         }
       }),
@@ -69,8 +70,7 @@ const getMovieMedia = async (movieTitle, lang = "en") => {
     ]);
 
     // 🎬 Trailer
-    const trailerId =
-      trailerRes.data?.items?.[0]?.id?.videoId || "";
+    const trailerId = trailerRes.data?.items?.[0]?.id?.videoId || "";
 
     // 🎵 Playlist
     const playlist = (songsRes.data?.items || []).map((item) => ({
