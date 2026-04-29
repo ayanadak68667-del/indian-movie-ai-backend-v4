@@ -3,20 +3,15 @@ const axios = require("axios");
 const BASE_URL = "https://www.googleapis.com/youtube/v3/search";
 const API_KEY = process.env.YOUTUBE_API_KEY;
 
-// 🌐 Language map
 const langMap = {
   hi: "Hindi",
   bn: "Bengali",
-  en: "Indian" // "English" এর বদলে "Indian" করা হলো যাতে বিদেশি মুভি কম আসে
+  en: "Indian"
 };
 
-// 🔁 Retry wrapper
 const fetchWithRetry = async (config, retries = 2) => {
   try {
-    return await axios({
-      ...config,
-      timeout: 8000 // ⏱️ timeout added
-    });
+    return await axios({ ...config, timeout: 8000 });
   } catch (err) {
     if (retries > 0) {
       console.warn(`🔁 YouTube Retry (${retries})`);
@@ -26,20 +21,18 @@ const fetchWithRetry = async (config, retries = 2) => {
   }
 };
 
-const getMovieMedia = async (movieTitle, lang = "en") => {
+// 🔥 এখানে year প্যারামিটার যোগ করা হয়েছে
+const getMovieMedia = async (movieTitle, lang = "en", year = "") => {
   try {
-    if (!movieTitle) {
-      return { trailerId: "", playlist: [] };
-    }
+    if (!movieTitle) return { trailerId: "", playlist: [] };
 
     const langSuffix = langMap[lang] || "Indian";
+    const yearText = year ? ` ${year}` : ""; // রিলিজ ইয়ার যোগ করা হলো
 
-    // 🎯 Better & Stricter query (accuracy improved)
-    // "movie" শব্দটি যোগ করা হলো যাতে আজেবাজে ভিডিও না আসে
-    const trailerQuery = `${movieTitle} ${langSuffix} movie official trailer`;
-    const songsQuery = `${movieTitle} ${langSuffix} movie official video song`;
+    // 🎯 একদম স্পেসিফিক সার্চ কোয়েরি
+    const trailerQuery = `${movieTitle}${yearText} ${langSuffix} movie official trailer`;
+    const songsQuery = `${movieTitle}${yearText} ${langSuffix} movie official video song`;
 
-    // ⚡ Parallel requests
     const [trailerRes, songsRes] = await Promise.all([
       fetchWithRetry({
         url: BASE_URL,
@@ -50,11 +43,9 @@ const getMovieMedia = async (movieTitle, lang = "en") => {
           maxResults: 1,
           key: API_KEY,
           type: "video",
-          // videoCategoryId: "1" ❌ এটি বাদ দেওয়া হলো কারণ T-Series/Zee Music মিউজিক ক্যাটাগরিতে ট্রেইলার ছাড়ে
           order: "relevance"
         }
       }),
-
       fetchWithRetry({
         url: BASE_URL,
         method: "GET",
@@ -69,10 +60,7 @@ const getMovieMedia = async (movieTitle, lang = "en") => {
       })
     ]);
 
-    // 🎬 Trailer
     const trailerId = trailerRes.data?.items?.[0]?.id?.videoId || "";
-
-    // 🎵 Playlist
     const playlist = (songsRes.data?.items || []).map((item) => ({
       id: item.id?.videoId || "",
       title: item.snippet?.title || "",
@@ -80,14 +68,8 @@ const getMovieMedia = async (movieTitle, lang = "en") => {
     }));
 
     return { trailerId, playlist };
-
   } catch (error) {
-    console.error("❌ YouTube Service Error:", {
-      movieTitle,
-      lang,
-      message: error.message
-    });
-
+    console.error("❌ YouTube Service Error:", error.message);
     return { trailerId: "", playlist: [] };
   }
 };
