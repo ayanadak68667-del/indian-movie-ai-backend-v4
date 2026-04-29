@@ -4,20 +4,20 @@ const router = express.Router();
 const tmdbService = require("../services/tmdbService");
 const homeCache = require("../services/homeCacheService");
 
-// 🖼️ Image Base URL & Transformer function
+// ===============================
+// 🖼️ IMAGE TRANSFORM
+// ===============================
 const IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 
 const transformMovie = (m) => ({
   ...m,
-  poster: m.poster_path
-    ? `${IMAGE_BASE}${m.poster_path}`
-    : null,
-  backdrop: m.backdrop_path
-    ? `${IMAGE_BASE}${m.backdrop_path}`
-    : null
+  poster: m.poster_path ? `${IMAGE_BASE}${m.poster_path}` : null,
+  backdrop: m.backdrop_path ? `${IMAGE_BASE}${m.backdrop_path}` : null
 });
 
-// 🎭 Mood → Genre map
+// ===============================
+// 🎭 MOOD → GENRE MAP
+// ===============================
 const MOOD_GENRES = {
   horror: 27,
   romance: 10749,
@@ -27,7 +27,25 @@ const MOOD_GENRES = {
 };
 
 // ===============================
-// ✅ HOME (AGGREGATED)
+// 🧠 HELPERS
+// ===============================
+const safeResults = (data) => data?.results || [];
+
+const uniqueById = (arr) => {
+  const seen = new Set();
+
+  return arr.filter((item) => {
+    if (!item?.id || seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+};
+
+const pickChunk = (arr, start, count) =>
+  arr.slice(start, start + count).map(transformMovie);
+
+// ===============================
+// ✅ HOME ROUTE
 // ===============================
 router.get("/", async (req, res) => {
   try {
@@ -37,16 +55,21 @@ router.get("/", async (req, res) => {
     const cacheKey = `home_${safeMood}`;
 
     const cached = await homeCache.get(cacheKey);
-    if (cached) {
-      return res.json({ success: true, cached: true, data: cached });
-    }
 
-    const genreId = MOOD_GENRES[safeMood];
+    if (cached) {
+      return res.json({
+        success: true,
+        cached: true,
+        data: cached
+      });
+    }
 
     let data;
 
+    // ===============================
     // 🟢 DEFAULT HOME
-    if (!genreId) {
+    // ===============================
+    if (safeMood === "default") {
       const [trending, topRated, upcoming, webseries] =
         await Promise.all([
           tmdbService.getTrending(),
@@ -55,48 +78,63 @@ router.get("/", async (req, res) => {
           tmdbService.getPopularWebSeries()
         ]);
 
-      // 🔥 Added .map(transformMovie)
+      const trend = uniqueById(safeResults(trending));
+      const top = uniqueById(safeResults(topRated));
+      const up = uniqueById(safeResults(upcoming));
+      const web = uniqueById(safeResults(webseries));
+
       data = {
-        heroPicks: (trending?.results || []).slice(0, 3).map(transformMovie),
-        trending: (trending?.results || []).slice(3, 8).map(transformMovie),
-        topRated: (topRated?.results || []).slice(0, 5).map(transformMovie),
-        upcoming: (upcoming?.results || []).slice(0, 5).map(transformMovie),
-        webSeries: (webseries?.results || []).slice(0, 5).map(transformMovie)
+        heroPicks: pickChunk(trend, 0, 3),
+        trending: pickChunk(trend, 3, 10),
+        topRated: pickChunk(top, 0, 8),
+        upcoming: pickChunk(up, 0, 8),
+        webSeries: pickChunk(web, 0, 8)
       };
     }
 
-    // 🔥 MOOD BASED
+    // ===============================
+    // 🔥 MOOD HOME
+    // ===============================
     else {
-      const [moodMovies, moodWebSeries] =
+      const genreId = MOOD_GENRES[safeMood];
+
+      const [movies, webseries] =
         await Promise.all([
           tmdbService.discoverMovies({ genre: genreId }),
           tmdbService.getPopularWebSeries()
         ]);
 
-      const results = moodMovies?.results || [];
+      const moodMovies = uniqueById(safeResults(movies));
+      const moodWeb = uniqueById(
+        safeResults(webseries).filter((s) =>
+          s.genre_ids?.includes(genreId)
+        )
+      );
 
-      // 🔥 Added .map(transformMovie)
       data = {
-        heroPicks: results.slice(0, 3).map(transformMovie),
-        trending: results.slice(3, 8).map(transformMovie),
-        topRated: results.slice(8, 13).map(transformMovie),
-        upcoming: results.slice(13, 18).map(transformMovie),
-        webSeries: (moodWebSeries?.results || [])
-          .filter((s) => s.genre_ids?.includes(genreId))
-          .slice(0, 5)
-          .map(transformMovie)
+        heroPicks: pickChunk(moodMovies, 0, 3),
+        trending: pickChunk(moodMovies, 3, 10),
+        topRated: pickChunk(moodMovies, 13, 8),
+        upcoming: pickChunk(moodMovies, 21, 8),
+        webSeries: pickChunk(moodWeb, 0, 8)
       };
     }
 
-    // 💾 Non-blocking cache
+    // ===============================
+    // 💾 CACHE SAVE (24h handled in service)
+    // ===============================
     homeCache.set(cacheKey, data);
 
-    return res.json({ success: true, cached: false, data });
+    return res.json({
+      success: true,
+      cached: false,
+      data
+    });
 
   } catch (err) {
     console.error("❌ HOME ERROR:", err.message);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Homepage load failed"
     });
@@ -104,37 +142,62 @@ router.get("/", async (req, res) => {
 });
 
 // ===============================
-// ✅ SECTION ROUTES (SAFE WRAPPER)
+// ✅ SAFE SECTION ROUTES
 // ===============================
 const sectionHandler = (key, fetchFn) => async (req, res) => {
   try {
     const cached = await homeCache.get(key);
 
     if (cached) {
-      return res.json({ success: true, cached: true, data: cached });
+      return res.json({
+        success: true,
+        cached: true,
+        data: cached
+      });
     }
 
-    // 🔥 Added .map(transformMovie) for individual sections as well
-    const data = ((await fetchFn())?.results || []).map(transformMovie);
+    const results = uniqueById(safeResults(await fetchFn()));
+    const data = results.map(transformMovie);
 
-    homeCache.set(key, data); // ⚡ non-blocking
+    homeCache.set(key, data);
 
-    res.json({ success: true, cached: false, data });
+    return res.json({
+      success: true,
+      cached: false,
+      data
+    });
 
   } catch (err) {
     console.error(`❌ ${key} ERROR:`, err.message);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to load data"
     });
   }
 };
 
-// 🔹 Individual sections
-router.get("/trending", sectionHandler("home_trending", tmdbService.getTrending));
-router.get("/top-rated", sectionHandler("home_top_rated", tmdbService.getTopRated));
-router.get("/upcoming", sectionHandler("home_upcoming", tmdbService.getUpcoming));
-router.get("/webseries", sectionHandler("home_webseries", tmdbService.getPopularWebSeries));
+// ===============================
+// 🎬 INDIVIDUAL ROUTES
+// ===============================
+router.get(
+  "/trending",
+  sectionHandler("home_trending", tmdbService.getTrending)
+);
+
+router.get(
+  "/top-rated",
+  sectionHandler("home_top_rated", tmdbService.getTopRated)
+);
+
+router.get(
+  "/upcoming",
+  sectionHandler("home_upcoming", tmdbService.getUpcoming)
+);
+
+router.get(
+  "/webseries",
+  sectionHandler("home_webseries", tmdbService.getPopularWebSeries)
+);
 
 module.exports = router;
