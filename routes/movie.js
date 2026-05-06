@@ -3,7 +3,7 @@ const router = express.Router();
 
 const tmdbService = require("../services/tmdbService");
 const youtubeService = require("../services/youtubeService");
-const { getDetailedAiAnalysis } = require("../services/groqService");
+const groqService = require("../services/groqService"); // 🎯 চেঞ্জ ১: লুপ ভাঙার জন্য Destructuring সরানো হয়েছে
 const mongoCache = require("../services/mongoCacheService");
 const ottService = require("../services/ottService"); // 🔥 OTT সার্ভিস
 
@@ -91,7 +91,7 @@ router.get("/movie/:id", async (req, res) => {
 
     // 🚀 Promise.all (OTT API যোগ করা হয়েছে)
     const [aiAnalysisRaw, mediaRaw, watchProvidersRaw] = await Promise.all([
-      getDetailedAiAnalysis(`${movie.title} ${movie.release_date}`, lang).catch(() => ({})),
+      groqService.getDetailedAiAnalysis(`${movie.title} ${movie.release_date}`, lang).catch(() => ({})), // 🎯 চেঞ্জ ২: groqService. ব্যবহার করে কল করা হয়েছে
       youtubeService.getMovieMedia(movie.title, lang, releaseYear).catch(() => ({})), 
       ottService.getStreamingInfo(movie.title).catch(() => ({ flatrate: [] })) 
     ]);
