@@ -84,11 +84,6 @@ Generate a DETAILED, CINEMATIC analysis in ${languageText}. Return ONLY valid JS
   "hits": ["Strength 1", "Strength 2"],
   "misses": ["Weakness 1", "Weakness 2"],
   "bts": ["Behind the scenes fact 1", "Behind the scenes fact 2"],
-  "crew": {
-    "director": "Director Name",
-    "producer": "Producer Name",
-    "music": "Music Director Name"
-  }
 }`;
 
     let attempts = 0;
