@@ -22,11 +22,6 @@ const defaultResponse = {
   hits: [],
   misses: [],
   bts: [],
-  crew: {
-    director: "Not Available",
-    producer: "Not Available",
-    music: "Not Available"
-  }
 };
 
 // ✅ Safe JSON parse
