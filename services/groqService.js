@@ -4,7 +4,7 @@ const { tavily } = require("@tavily/core");
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const tvly = tavily({ apiKey: process.env.TAVILY_API_KEY });
 
-// ✅ Default safe response (UI-এর সাথে হুবহু মেলানো হয়েছে)
+// ✅ Default safe response
 const defaultResponse = {
   summary: "AI analysis is currently unavailable for this movie.",
   ai_verdict: "N/A",
@@ -17,8 +17,8 @@ const defaultResponse = {
   },
   who_should_watch: {
     mass_audience: 0,
-    family: 0,    // 🔥 ফ্রন্টএন্ডের সাথে মেলানো হলো
-    kids: 0       // 🔥 ফ্রন্টএন্ডের critics & cinephiles-এর জন্য
+    family: 0,    
+    kids: 0       
   },
   performance_spotlight: [],
   star_paychecks: [],
@@ -31,7 +31,6 @@ const defaultResponse = {
 const safeParse = (text) => {
   try {
     const parsed = JSON.parse(text);
-    // Safety check: Ensure the returned keys match what frontend expects
     if (!parsed.who_should_watch) {
       parsed.who_should_watch = defaultResponse.who_should_watch;
     }
@@ -42,7 +41,7 @@ const safeParse = (text) => {
   }
 };
 
-exports.getDetailedAiAnalysis = async (movieTitle, lang = "en") => {
+exports.getDetailedAiAnalysis = async (movieTitleWithDate, lang = "en") => {
   const langMap = {
     hi: "Hindi",
     bn: "Bengali",
@@ -58,14 +57,15 @@ exports.getDetailedAiAnalysis = async (movieTitle, lang = "en") => {
 
   try {
     // 🌐 ---------------------------------------------------------
-    // Tavily দিয়ে লাইভ ইন্টারনেট সার্চ (বক্স অফিস ও বাজেটের জন্য)
+    // Tavily Search (Optimized for exact movie match)
     // ---------------------------------------------------------
     let liveInternetData = "No live data found.";
     try {
-      console.log(`🔍 Tavily Searching live internet for: ${movieTitle}`);
-      // 🎯 FIXED: Forced Tavily to look for Indian currency (Crores/INR)
+      console.log(`🔍 Tavily Searching live internet for: ${movieTitleWithDate}`);
+      
+      // 🎯 FIXED: Search query is much smarter now to avoid sequel mix-ups
       const tavilyResponse = await tvly.search(
-        `${movieTitle} Indian movie exact budget in Crores INR, worldwide box office collection in Crores INR, star cast salary fees, OTT platform release`,
+        `"${movieTitleWithDate}" Indian movie exact budget, worldwide box office collection, star cast salary. (Do not include sequels)`,
         { 
           searchDepth: "basic", 
           includeAnswer: true,
@@ -77,19 +77,19 @@ exports.getDetailedAiAnalysis = async (movieTitle, lang = "en") => {
       console.warn("⚠️ Tavily Search Failed:", tavilyError.message);
     }
 
-    // 🎯 The Magic Prompt for your Dream Design (Updated for strictness and exact keys)
-    const prompt = `Movie: "${movieTitle}". You are a top Indian movie critic and AI analyst for "Filmi Bharat".
+    // 🎯 The Magic Prompt: STRICT ACCURACY & ANTI-SEQUEL LOCK
+    const prompt = `Movie Name & Release Date: "${movieTitleWithDate}". You are a highly professional Indian movie critic and AI data analyst for "Filmi Bharat". Accuracy is your #1 priority.
     
-    [CRITICAL LIVE DATA]: Here is the absolute latest information about this movie directly from the internet right now: "${liveInternetData}"
+    [CRITICAL LIVE DATA]: "${liveInternetData}"
     
-    Based ONLY on this live data and your existing knowledge, generate a DETAILED, CINEMATIC analysis in ${languageText}. 
+    Based on the live data and your training, generate a DETAILED, CINEMATIC analysis in ${languageText}.
     
-    CRITICAL RULES:
-    1. NEVER use Dollar ($) signs. Convert all financial figures to Indian Rupees (₹) and format them in "Crores" (e.g., "₹20 Crore").
-    2. If the movie had a direct OTT release and no box office exists, clearly state "OTT Release" for verdict and "N/A" for box office.
-    3. If data is genuinely missing from the LIVE DATA or your knowledge, use "N/A" rather than inventing numbers.
-    4. Provide actual actor names in performance_spotlight and star_paychecks.
-    5. The "who_should_watch" object MUST use EXACTLY these keys: "mass_audience", "family", and "kids" (note: "kids" represents critics/cinephiles). Provide integer values from 0 to 100.
+    🚨 STRICT ACCURACY RULES (CRITICAL):
+    1. ANTI-SEQUEL LOCK: You are analyzing the EXACT movie released on the date mentioned above. Do NOT mix it up with its sequels, prequels, or recent trending parts (e.g., If asked about "Stree 2018", absolutely DO NOT give data for "Stree 2 2024").
+    2. VERIFY LIVE DATA: If the [CRITICAL LIVE DATA] provided is talking about a sequel or a different movie, completely IGNORE IT and rely on your own highly accurate historical data for the original movie.
+    3. CURRENCY: NEVER use Dollar ($) signs. Convert all financial figures to Indian Rupees (₹) and format them in "Crores" (e.g., "₹20 Crore", "₹125 Crore").
+    4. MISSING DATA: If the box office or salary data is genuinely unavailable, write "N/A". Do not invent numbers.
+    5. The "who_should_watch" object MUST use EXACTLY these keys: "mass_audience", "family", and "kids".
     
     Return ONLY valid JSON matching this EXACT structure, nothing else:
     {
