@@ -1,8 +1,8 @@
 const Groq = require("groq-sdk");
-const { tvly } = require("@tavily/core"); // 🔥 Tavily Import করা হলো
+const { tavily } = require("@tavily/core"); // 🔥 'tvly' এর বদলে 'tavily' হবে
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const tavily = tvly(process.env.TAVILY_API_KEY); // 🔥 Tavily Setup করা হলো
+const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY }); // 🔥 এখানে অবজেক্ট আকারে API কী দিতে হয়
 
 // ✅ Default safe response (Crew বাদ দেওয়া হয়েছে এবং UI-এর সাথে মেলানো হয়েছে)
 const defaultResponse = {
