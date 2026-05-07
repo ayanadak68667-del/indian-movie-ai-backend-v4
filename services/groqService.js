@@ -1,10 +1,10 @@
 const Groq = require("groq-sdk");
-const { tavily } = require("@tavily/core"); // 🔥 'tvly' এর বদলে 'tavily' হবে
+const { tavily } = require("@tavily/core"); // 🔥 তোমার করা সঠিক ইমপোর্ট
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY }); // 🔥 এখানে অবজেক্ট আকারে API কী দিতে হয়
+const tvly = tavily({ apiKey: process.env.TAVILY_API_KEY }); // 🔥 তোমার করা সঠিক ক্লায়েন্ট সেটআপ
 
-// ✅ Default safe response (Crew বাদ দেওয়া হয়েছে এবং UI-এর সাথে মেলানো হয়েছে)
+// ✅ Default safe response (UI-এর সাথে মেলানো হয়েছে)
 const defaultResponse = {
   summary: "AI analysis is currently unavailable for this movie.",
   ai_verdict: "N/A",
@@ -17,8 +17,8 @@ const defaultResponse = {
   },
   who_should_watch: {
     mass_audience: 0,
-    family_and_kids: 0,
-    critics_and_cinephiles: 0
+    family: 0,   // 🔥 ফ্রন্টএন্ডের জন্য ঠিক করা হলো
+    critics: 0   // 🔥 ফ্রন্টএন্ডের জন্য ঠিক করা হলো
   },
   performance_spotlight: [],
   star_paychecks: [],
@@ -36,7 +36,8 @@ const safeParse = (text) => {
   }
 };
 
-const getDetailedAiAnalysis = async (movieTitle, lang = "en") => {
+// 🛠️ Circular Dependency দূর করতে সরাসরি exports ব্যবহার করা হলো
+exports.getDetailedAiAnalysis = async (movieTitle, lang = "en") => {
   const langMap = {
     hi: "Hindi",
     bn: "Bengali",
@@ -58,7 +59,8 @@ const getDetailedAiAnalysis = async (movieTitle, lang = "en") => {
     let liveInternetData = "No live data found.";
     try {
       console.log(`🔍 Tavily Searching live internet for: ${movieTitle}`);
-      const tavilyResponse = await tavily.search(
+      // 🔥 তোমার আপডেট করা tvly.search
+      const tavilyResponse = await tvly.search(
         `${movieTitle} Indian movie exact budget, box office collection, star cast salary, OTT platform release deal`,
         { 
           searchDepth: "basic", 
@@ -71,7 +73,7 @@ const getDetailedAiAnalysis = async (movieTitle, lang = "en") => {
       console.warn("⚠️ Tavily Search Failed:", tavilyError.message);
     }
 
-    // 🎯 The Magic Prompt for your Dream Design (Crew বাদ দেওয়া হয়েছে)
+    // 🎯 The Magic Prompt for your Dream Design 
     const prompt = `Movie: "${movieTitle}". You are a top Indian movie critic and AI analyst for "Filmi Bharat".
     
     [CRITICAL LIVE DATA]: Here is the absolute latest information about this movie directly from the internet right now: "${liveInternetData}"
@@ -92,8 +94,8 @@ const getDetailedAiAnalysis = async (movieTitle, lang = "en") => {
       },
       "who_should_watch": {
         "mass_audience": 90,
-        "family_and_kids": 80,
-        "critics_and_cinephiles": 70
+        "family": 80,
+        "critics": 70
       },
       "performance_spotlight": [
         {
@@ -141,5 +143,4 @@ const getDetailedAiAnalysis = async (movieTitle, lang = "en") => {
     return defaultResponse;
   }
 };
-
-module.exports = { getDetailedAiAnalysis };
+// নিচের module.exports ডিলিট করা হয়েছে ওয়ার্নিং বন্ধ করার জন্য
