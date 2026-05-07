@@ -1,7 +1,7 @@
-const cron = require("node-cron");
+const cron = require("node-cron"); // 🎯 চেঞ্জ ১: বড় হাতের Const ছোট হাতের const করা হয়েছে
 const tmdbService = require("../services/tmdbService");
 const homeCache = require("../services/homeCacheService");
-const { getDetailedAiAnalysis } = require("../services/groqService");
+const groqService = require("../services/groqService"); // 🎯 চেঞ্জ ২: লুপ ভাঙার জন্য Destructuring সরানো হয়েছে
 const mongoCache = require("../services/mongoCacheService");
 
 // 📊 API Usage Controls
@@ -69,7 +69,8 @@ cron.schedule("0 * * * *", () => {
       // 🔍 Skip if already has AI data
       if (existing?.aiAnalysis?.summary) continue;
 
-      const ai = await getDetailedAiAnalysis(m.title, "en").catch(() => null);
+      // 🎯 চেঞ্জ ৩: groqService ব্যবহার করে ফাংশনটি কল করা হয়েছে
+      const ai = await groqService.getDetailedAiAnalysis(m.title, "en").catch(() => null);
 
       if (!ai) continue;
 
