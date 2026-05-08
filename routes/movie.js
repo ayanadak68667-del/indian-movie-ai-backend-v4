@@ -3,9 +3,9 @@ const router = express.Router();
 
 const tmdbService = require("../services/tmdbService");
 const youtubeService = require("../services/youtubeService");
-const groqService = require("../services/groqService"); // 🎯 চেঞ্জ ১: লুপ ভাঙার জন্য Destructuring সরানো হয়েছে
+const groqService = require("../services/groqService"); 
 const mongoCache = require("../services/mongoCacheService");
-const ottService = require("../services/ottService"); // 🔥 OTT সার্ভিস
+const ottService = require("../services/ottService"); 
 
 const IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 const transformMovie = (m) => ({
@@ -41,7 +41,7 @@ router.get("/discover", async (req, res) => {
   }
 });
 
-// ৩️⃣ SEARCH
+// ৩️⃣ SEARCH (🔥 Junk Filter Added - ফালতু ভিডিও আর আসবে না)
 router.get("/search", async (req, res) => {
   try {
     const query = (req.query.q || "").trim();
@@ -51,7 +51,16 @@ router.get("/search", async (req, res) => {
     if (query.length < 2) return res.json({ success: true, data: [] });
 
     const data = await tmdbService.searchMulti(query, lang, page);
-    const formattedData = (data?.results || []).map(transformMovie);
+    
+    // 🔥 ম্যাজিক ফিল্টার: শুধুমাত্র আসল ও জনপ্রিয় মুভি/সিরিজগুলো ফিল্টার করা হচ্ছে
+    const validResults = (data?.results || []).filter(item => {
+      const isMedia = item.media_type === 'movie' || item.media_type === 'tv';
+      const hasPoster = !!item.poster_path;
+      const isPopularEnough = (item.vote_count || 0) >= 5;
+      return isMedia && hasPoster && isPopularEnough;
+    });
+
+    const formattedData = validResults.map(transformMovie);
     res.json({ success: true, data: formattedData });
   } catch (error) {
     console.error("Search Error:", error.message);
@@ -59,7 +68,7 @@ router.get("/search", async (req, res) => {
   }
 });
 
-// ৪️⃣ MOVIE DETAILS (🔥 Final Updated)
+// ৪️⃣ MOVIE DETAILS (🔥 Smart Certificate Fix Added)
 router.get("/movie/:id", async (req, res) => {
   const movieId = req.params.id;
   const lang = req.query.lang || "en";
@@ -85,46 +94,49 @@ router.get("/movie/:id", async (req, res) => {
     const formattedMovie = transformMovie(movie);
     const releaseYear = movie.release_date ? movie.release_date.split('-')[0] : ""; 
 
+    // 🔥 স্মার্ট সার্টিফিকেট লজিক (ভারত -> আমেরিকা -> ডিফল্ট)
     const releaseDates = await tmdbService.getReleaseDates(movieId);
-    const indiaRelease = releaseDates?.results?.find((r) => r.iso_3166_1 === "IN");
-    const cert = indiaRelease?.release_dates?.[0]?.certification || "UA 13+";
+    let cert = "UA"; // ডিফল্ট 'N/A' এর বদলে 'UA'
+    if (releaseDates && releaseDates.results) {
+      const targetRelease = 
+        releaseDates.results.find((r) => r.iso_3166_1 === "IN") || 
+        releaseDates.results.find((r) => r.iso_3166_1 === "US") || 
+        releaseDates.results[0];
 
-    // 🚀 Promise.all (OTT API যোগ করা হয়েছে)
+      if (targetRelease && targetRelease.release_dates) {
+        const validCert = targetRelease.release_dates.find(d => d.certification && d.certification.trim() !== "");
+        if (validCert) {
+          cert = validCert.certification;
+        }
+      }
+    }
+
     const [aiAnalysisRaw, mediaRaw, watchProvidersRaw] = await Promise.all([
-      groqService.getDetailedAiAnalysis(`${movie.title} ${movie.release_date}`, lang).catch(() => ({})), // 🎯 চেঞ্জ ২: groqService. ব্যবহার করে কল করা হয়েছে
+      groqService.getDetailedAiAnalysis(`${movie.title} ${movie.release_date}`, lang).catch(() => ({})),
       youtubeService.getMovieMedia(movie.title, lang, releaseYear).catch(() => ({})), 
       ottService.getStreamingInfo(movie.title).catch(() => ({ flatrate: [] })) 
     ]);
 
     const aiAnalysis = aiAnalysisRaw || {};
 
-    // 🎯 ম্যাজিক ট্রিক: TMDB থেকে ১০০% নির্ভুল Crew ডেটা বের করা হচ্ছে
     const tmdbCrew = movie.credits?.crew || [];
     const director = tmdbCrew.find(c => c.job === "Director")?.name || "Not Available";
     const producer = tmdbCrew.find(c => c.job === "Producer" || c.job === "Executive Producer")?.name || "Not Available";
     const music = tmdbCrew.find(c => c.job === "Original Music Composer" || c.job === "Music")?.name || "Not Available";
 
-    // 🎯 AI-এর ডেটাতে TMDB-এর Crew ডেটা ঢুকিয়ে দেওয়া হলো
-    aiAnalysis.crew = {
-      director: director,
-      producer: producer,
-      music: music
-    };
+    aiAnalysis.crew = { director, producer, music };
 
     const media = {
       trailerId: mediaRaw?.trailerId || "",
       playlist: mediaRaw?.playlist || []
     };
 
-    // 🚀 স্ট্রিমিং ডেটা (RapidAPI থেকে)
-    const safeWatchProviders = watchProvidersRaw;
-
     const meta = {
       isTrending: (movie.popularity || 0) > 100,
       isNew: movie.release_date ? (Date.now() - new Date(movie.release_date)) / 86400000 < 60 : false,
       popularity: movie.popularity || 0,
       imdbRating: movie.vote_average || 0,
-      certification: cert
+      certification: cert // 🔥 ফিক্সড সার্টিফিকেট এখানে অ্যাড হলো
     };
 
     const movieData = {
@@ -133,7 +145,7 @@ router.get("/movie/:id", async (req, res) => {
       aiAnalysis,
       trailerId: media.trailerId,
       playlist: media.playlist,
-      watchProviders: safeWatchProviders,
+      watchProviders: watchProvidersRaw,
       meta,
       lastUpdated: new Date()
     };
