@@ -1,101 +1,49 @@
-const axios = require("axios");
-
-const TMDB_BASE = "https://api.themoviedb.org/3";
-const API_KEY = process.env.TMDB_API_KEY;
-
-// ✅ Axios instance (clean + reusable)
-const api = axios.create({
-  baseURL: TMDB_BASE,
-  timeout: 10000,
-  params: {
-    api_key: API_KEY
-  }
-});
-
-/**
- * 🔐 Safe TMDB request with retry + rate-limit handling
- */
-async function safeGet(url, params = {}, retries = 2) {
-  try {
-    const res = await api.get(url, { params });
-    return res.data;
-  } catch (e) {
-    const status = e?.response?.status;
-
-    // 🔁 Retry for network / server errors
-    if (retries > 0 && (!status || status >= 500)) {
-      console.warn(`🔁 Retrying TMDB... (${retries})`);
-      return safeGet(url, params, retries - 1);
-    }
-
-    // 🚦 Handle rate limit (429)
-    if (status === 429 && retries > 0) {
-      console.warn("⏳ TMDB rate limited, retrying...");
-      await new Promise((r) => setTimeout(r, 1000));
-      return safeGet(url, params, retries - 1);
-    }
-
-    console.error("❌ TMDB ERROR:", {
-      url,
-      params,
-      status,
-      message: e?.message
-    });
-
-    return null;
-  }
-}
-
-/**
- * 🌐 App language → TMDB language
- */
-function mapLang(lang = "en") {
-  const langMap = {
-    hi: "hi-IN",
-    bn: "bn-IN",
-    en: "en-US"
-  };
-
-  return langMap[lang] || "en-US";
-}
-
 class TMDBService {
 
   /* =========================
-     🔥 HOMEPAGE APIs
+     🔥 HOMEPAGE APIs (100% Indian Content Filtered)
      ========================= */
 
   async getTrending(lang = "en") {
     return safeGet("/discover/movie", {
-      region: "IN",
-      with_origin_country: "IN",
+      with_origin_country: "IN", // শুধু ইন্ডিয়ান
       sort_by: "popularity.desc",
       language: mapLang(lang)
     });
   }
 
   async getTopRated(lang = "en") {
-    return safeGet("/movie/top_rated", {
-      region: "IN",
+    // 🔥 গ্লোবাল top_rated এর বদলে discover ব্যবহার করা হলো যাতে হলিউড না আসে
+    return safeGet("/discover/movie", {
+      with_origin_country: "IN",
+      sort_by: "vote_average.desc",
+      "vote_count.gte": 150, // অন্তত ১৫০ জন ভোট দিয়েছে এমন ভালো মুভি
       language: mapLang(lang)
     });
   }
 
   async getUpcoming(lang = "en") {
-    return safeGet("/movie/upcoming", {
-      region: "IN",
+    const today = new Date().toISOString().split('T')[0];
+    // 🔥 গ্লোবাল upcoming এর বদলে discover ব্যবহার করা হলো
+    return safeGet("/discover/movie", {
+      with_origin_country: "IN",
+      "primary_release_date.gte": today, // আজকের পরের রিলিজ
+      sort_by: "popularity.desc",
       language: mapLang(lang)
     });
   }
 
   async getPopularWebSeries(lang = "en") {
-    return safeGet("/tv/popular", {
+    // 🔥 tv/popular এর বদলে discover/tv ব্যবহার করা হলো
+    return safeGet("/discover/tv", {
+      with_origin_country: "IN",
+      sort_by: "popularity.desc",
       language: mapLang(lang)
     });
   }
 
   /* =========================
-     🎯 DISCOVER / MOOD
+     🎯 DISCOVER / MOOD (Hollywood Fixed!)
      ========================= */
 
   async discoverMovies({ genre, year, lang = "en" }) {
@@ -103,7 +51,7 @@ class TMDBService {
       with_genres: genre || undefined,
       primary_release_year: year || undefined,
       sort_by: "popularity.desc",
-      region: "IN",
+      with_origin_country: "IN", // 🚨 এই লাইনটাই হলিউড মুভিগুলোকে আটকে দেবে!
       language: mapLang(lang)
     });
   }
@@ -167,5 +115,3 @@ class TMDBService {
     return data?.results?.IN || {};
   }
 }
-
-module.exports = new TMDBService();
