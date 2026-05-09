@@ -114,4 +114,24 @@ class TMDBService {
     const data = await safeGet(`/movie/${movieId}/watch/providers`);
     return data?.results?.IN || {};
   }
+
+  /* =========================
+     🌟 ACTOR / PERSON DETAILS
+     ========================= */
+
+  // অ্যাক্টরের বায়োগ্রাফি ও বেসিক ডিটেইলস আনার জন্য
+  async getPersonDetails(personId, lang = "en") {
+    if (!personId || isNaN(personId)) return null;
+    return safeGet(`/person/${personId}`, {
+      language: mapLang(lang)
+    });
+  }
+
+  // অ্যাক্টরের সমস্ত মুভি ও সিরিজের লিস্ট আনার জন্য
+  async getPersonCredits(personId, lang = "en") {
+    if (!personId || isNaN(personId)) return null;
+    return safeGet(`/person/${personId}/combined_credits`, {
+      language: mapLang(lang)
+    });
+  }
 }
