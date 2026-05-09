@@ -12,6 +12,9 @@ const compression = require("compression");
 const morgan = require("morgan");
 const mongoSanitize = require("express-mongo-sanitize");
 
+// 👈 আপনার দেওয়া নতুন require লাইনটি এখানে অ্যাড করা হয়েছে
+const personRoutes = require('./routes/person'); 
+
 const app = express();
 
 // ✅ Render বা অন্যান্য প্রক্সি সার্ভারের জন্য এই লাইনটি অবশ্যই যোগ করুন
@@ -110,6 +113,9 @@ app.use("/api/movies", require("./routes/movie"));
 app.use("/api/ai-chat", require("./routes/aiChat"));
 app.use("/api/home", require("./routes/home"));
 app.use("/api/admin", require("./routes/admin"));
+
+// 👈 আপনার দেওয়া নতুন রাউট লাইনটি এখানে অ্যাড করা হয়েছে
+app.use('/api/person', personRoutes); 
 
 // ========================
 // ❌ GLOBAL ERROR HANDLER
