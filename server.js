@@ -117,6 +117,9 @@ app.use("/api/admin", require("./routes/admin"));
 // 👈 আপনার দেওয়া নতুন রাউট লাইনটি এখানে অ্যাড করা হয়েছে
 app.use('/api/person', personRoutes); 
 
+// 👈 Anime Route
+app.use("/api/anime", require("./routes/anime"));
+
 // ========================
 // ❌ GLOBAL ERROR HANDLER
 // ========================
