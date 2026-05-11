@@ -1,7 +1,7 @@
 require("express-async-errors");
 require("dotenv").config();
 
-require("./jobs/autoRefresh"); 
+require("./jobs/autoRefresh");
 
 const express = require("express");
 const connectDB = require("./config/db");
@@ -12,13 +12,11 @@ const compression = require("compression");
 const morgan = require("morgan");
 const mongoSanitize = require("express-mongo-sanitize");
 
-// 👈 আপনার দেওয়া নতুন require লাইনটি এখানে অ্যাড করা হয়েছে
-const personRoutes = require('./routes/person'); 
+const personRoutes = require('./routes/person');
 
 const app = express();
 
-// ✅ Render বা অন্যান্য প্রক্সি সার্ভারের জন্য এই লাইনটি অবশ্যই যোগ করুন
-// এটি আপনার express-rate-limit এর 'ERR_ERL_UNEXPECTED_X_FORWARDED_FOR' এররটি দূর করবে।
+// ✅ Render বা অন্যান্য প্রক্সি সার্ভারের জন্য
 app.set('trust proxy', 1);
 
 // ✅ ENV validation
@@ -33,7 +31,7 @@ const requiredEnv = [
 
 requiredEnv.forEach((key) => {
   if (!process.env[key]) {
-    console.error(`❌ Missing ENV: ${key}`);
+    console.error(`❌ Missing ENV: ${key}`); // 👈 Backtick অ্যাড করা হয়েছে
     process.exit(1);
   }
 });
@@ -66,28 +64,26 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
+      // ✅ Mobile apps / Postman support  
+      if (!origin) return callback(null, true);  
 
-      // ✅ Mobile apps / Postman support
-      if (!origin) return callback(null, true);
+      // ✅ Hostinger Preview + Localhost support  
+      if (  
+        origin.includes("hostinger.com") ||  
+        origin.includes("hostingerapp.com") ||  
+        origin.includes("localhost")  
+      ) {  
+        return callback(null, true);  
+      }  
 
-      // ✅ Hostinger Preview + Localhost support
-      if (
-        origin.includes("hostinger.com") ||
-        origin.includes("hostingerapp.com") ||
-        origin.includes("localhost")
-      ) {
-        return callback(null, true);
-      }
+      // ✅ Main domain allow  
+      if (allowedOrigins.indexOf(origin) !== -1) {  
+        return callback(null, true);  
+      }  
 
-      // ✅ Main domain allow
-      if (allowedOrigins.indexOf(origin) !== -1) {
-        return callback(null, true);
-      }
-
-      // ❌ Block others
-      return callback(new Error("CORS Policy Error: Origin not allowed"));
-    },
-
+      // ❌ Block others  
+      return callback(new Error("CORS Policy Error: Origin not allowed"));  
+    },  
     credentials: true
   })
 );
@@ -136,11 +132,7 @@ app.use("/api/movies", require("./routes/movie"));
 app.use("/api/ai-chat", require("./routes/aiChat"));
 app.use("/api/home", require("./routes/home"));
 app.use("/api/admin", require("./routes/admin"));
-
-// 👈 আপনার দেওয়া নতুন রাউট লাইনটি এখানে অ্যাড করা হয়েছে
-app.use('/api/person', personRoutes); 
-
-// 👈 Anime Route
+app.use('/api/person', personRoutes);
 app.use("/api/anime", require("./routes/anime"));
 
 // ========================
@@ -149,7 +141,6 @@ app.use("/api/anime", require("./routes/anime"));
 
 app.use((err, req, res, next) => {
   console.error("❌ Error:", err.stack);
-
   res.status(err.status || 500).json({
     success: false,
     message:
@@ -166,5 +157,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Filmi Bharat Backend Live on ${PORT}`);
+  console.log(`🚀 Filmi Bharat Backend Live on ${PORT}`); // 👈 Backtick অ্যাড করা হয়েছে
 });
