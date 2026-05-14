@@ -52,40 +52,11 @@ app.use(helmet());
 // Mongo sanitize (prevent injection)
 app.use(mongoSanitize());
 
-// 🚀 SECURE & DYNAMIC CORS (Preview Fix)
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://raatkibaat.in",
-  "https://raatkibaat.in",
-  "http://www.raatkibaat.in",
-  "https://www.raatkibaat.in"
-];
-
 app.use(
-  cors({
-    origin: function (origin, callback) {
-      // ✅ Mobile apps / Postman support  
-      if (!origin) return callback(null, true);  
-
-      // ✅ Hostinger Preview + Localhost support  
-      if (  
-        origin.includes("hostinger.com") ||  
-        origin.includes("hostingerapp.com") ||  
-        origin.includes("localhost")  
-      ) {  
-        return callback(null, true);  
-      }  
-
-      // ✅ Main domain allow  
-      if (allowedOrigins.indexOf(origin) !== -1) {  
-        return callback(null, true);  
-      }  
-
-      // ❌ Block others  
-      return callback(new Error("CORS Policy Error: Origin not allowed"));  
-    },  
-    credentials: true
-  })
+cors({
+origin: true,
+credentials: true
+})
 );
 
 // ========================
