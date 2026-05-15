@@ -25,6 +25,73 @@ router.get("/trending-stars", (req, res) => {
   res.json({ success: true, data: stars });
 });
 
+// ⭐ Bollywood Stars
+router.get("/bollywood-stars", (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      {
+        id: 35742,
+        name: "Shah Rukh Khan",
+        profile_path: "/n8VOWPAP6jI7wDnf4R3x1DneA5z.jpg"
+      },
+      {
+        id: 1108120,
+        name: "Alia Bhatt",
+        profile_path: "/2kS13h7b5T1bJ8Btzg01v61h5K8.jpg"
+      },
+      {
+        id: 52763,
+        name: "Salman Khan",
+        profile_path: "/iwWm1A3eHUPZzVw5KxV2a84YF5u.jpg"
+      }
+    ]
+  });
+});
+
+// ⭐ Tollywood Stars
+router.get("/tollywood-stars", (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      {
+        id: 55010,
+        name: "Prabhas",
+        profile_path: "/vBwR27l28Y7JdZJIt25n3Yy9U9H.jpg"
+      },
+      {
+        id: 73968,
+        name: "Allu Arjun",
+        profile_path: "/nJm7hEEQoQnOvvz71MIn3bNqX5R.jpg"
+      },
+      {
+        id: 73421,
+        name: "Samantha Ruth Prabhu",
+        profile_path: "/vGk4tN6uSMy68pZt14b0Y5MhO4c.jpg"
+      }
+    ]
+  });
+});
+
+// ⭐ TV Celebrities
+router.get("/tv-celebrities", (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      {
+        id: 12345,
+        name: "Kapil Sharma",
+        profile_path: "/test.jpg"
+      },
+      {
+        id: 12346,
+        name: "Tejasswi Prakash",
+        profile_path: "/test2.jpg"
+      }
+    ]
+  });
+});
+
 // ২️⃣ অ্যাক্টরের ডিটেইলস এবং তার মুভি লিস্ট (Actor Profile Page-এর জন্য)
 router.get("/:id", async (req, res) => {
   const personId = req.params.id;
