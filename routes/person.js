@@ -4,95 +4,80 @@ const tmdbService = require("../services/tmdbService");
 
 const IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 
-// ১️⃣ হোমপেজের জন্য পপুলার ইন্ডিয়ান স্টারদের লিস্ট (Bollywood & Tollywood)
-router.get("/trending-stars", (req, res) => {
-  const stars = {
-    bollywood: [
-      { id: 35742, name: "Shah Rukh Khan", image: `${IMAGE_BASE}/n8VOWPAP6jI7wDnf4R3x1DneA5z.jpg` },
-      { id: 139534, name: "Deepika Padukone", image: `${IMAGE_BASE}/vL8X5Kvl7QnLz8Yg51nZOT2u4Yq.jpg` },
-      { id: 52763, name: "Salman Khan", image: `${IMAGE_BASE}/iwWm1A3eHUPZzVw5KxV2a84YF5u.jpg` },
-      { id: 1108120, name: "Alia Bhatt", image: `${IMAGE_BASE}/2kS13h7b5T1bJ8Btzg01v61h5K8.jpg` },
-      { id: 78749, name: "Hrithik Roshan", image: `${IMAGE_BASE}/jR2NigXwP1xQz8eC6t4V6aUEXmE.jpg` }
-    ],
-    tollywood: [
-      { id: 73968, name: "Allu Arjun", image: `${IMAGE_BASE}/nJm7hEEQoQnOvvz71MIn3bNqX5R.jpg` },
-      { id: 73421, name: "Samantha Ruth Prabhu", image: `${IMAGE_BASE}/vGk4tN6uSMy68pZt14b0Y5MhO4c.jpg` },
-      { id: 55010, name: "Prabhas", image: `${IMAGE_BASE}/vBwR27l28Y7JdZJIt25n3Yy9U9H.jpg` },
-      { id: 147028, name: "Rashmika Mandanna", image: `${IMAGE_BASE}/5sU2B1mK8H6T4L8H41qP90M03R1.jpg` },
-      { id: 63631, name: "Ram Charan", image: `${IMAGE_BASE}/4mB38M8j667UqYfGf1T0N1w8aQo.jpg` }
-    ]
-  };
-  res.json({ success: true, data: stars });
-});
+// বড় লিস্ট: এখানে আমরা প্রতিটি ইন্ডাস্ট্রির আসল TMDB আইডি দিয়েছি
+const STAR_IDS = {
+  bollywood: [
+    35742, 52763, 78749, 139534, 1108120, 35743, 178224, 52736, 10859, 35771,
+    5530, 85732, 1108121, 102927, 73420, 1108125, 132431, 113941, 126743, 85729
+  ],
+  tollywood: [
+    55010, 73968, 63631, 73421, 147028, 1699988, 82248, 1530960, 58000, 142106,
+    139626, 171630, 119565, 1243577, 1380064, 113171, 144186, 146199, 162507, 1073860
+  ],
+  tv: [
+    1251144, 2352514, 1251148, 1395535, 1243577, 1551068, 1787889, 2108741, 2339678,
+    2161245, 1632766, 1443657, 1784941, 1588661, 2151631, 1373516, 2125553, 1902096
+  ]
+};
 
-// ⭐ Bollywood Stars
-router.get("/bollywood-stars", (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      {
-        id: 35742,
-        name: "Shah Rukh Khan",
-        profile_path: "/n8VOWPAP6jI7wDnf4R3x1DneA5z.jpg"
-      },
-      {
-        id: 1108120,
-        name: "Alia Bhatt",
-        profile_path: "/2kS13h7b5T1bJ8Btzg01v61h5K8.jpg"
-      },
-      {
-        id: 52763,
-        name: "Salman Khan",
-        profile_path: "/iwWm1A3eHUPZzVw5KxV2a84YF5u.jpg"
-      }
-    ]
-  });
-});
+// হেল্পার ফাংশন: আইডি থেকে রিয়াল-টাইম ডেটা আনার জন্য
+const fetchActorsData = async (ids, lang = "en") => {
+  try {
+    const promises = ids.map(id => tmdbService.getPersonDetails(id, lang));
+    const results = await Promise.all(promises);
+    
+    return results.map(person => {
+      if (!person) return null;
+      return {
+        id: person.id,
+        name: person.name,
+        profile_path: person.profile_path ? `${IMAGE_BASE}${person.profile_path}` : null
+      };
+    }).filter(person => person !== null);
+  } catch (error) {
+    console.error("Error fetching actor data:", error);
+    return [];
+  }
+};
 
-// ⭐ Tollywood Stars
-router.get("/tollywood-stars", (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      {
-        id: 55010,
-        name: "Prabhas",
-        profile_path: "/vBwR27l28Y7JdZJIt25n3Yy9U9H.jpg"
-      },
-      {
-        id: 73968,
-        name: "Allu Arjun",
-        profile_path: "/nJm7hEEQoQnOvvz71MIn3bNqX5R.jpg"
-      },
-      {
-        id: 73421,
-        name: "Samantha Ruth Prabhu",
-        profile_path: "/vGk4tN6uSMy68pZt14b0Y5MhO4c.jpg"
-      }
-    ]
-  });
-});
+// প্যাগিনেশন হেল্পার ফাংশন
+const getPaginatedStars = async (req, res, industryKey) => {
+  try {
+    const lang = req.query.lang || "en";
+    const page = parseInt(req.query.page) || 1; 
+    const limit = parseInt(req.query.limit) || 20; 
+    
+    const allIds = STAR_IDS[industryKey];
+    
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    const paginatedIds = allIds.slice(startIndex, endIndex);
 
-// ⭐ TV Celebrities
-router.get("/tv-celebrities", (req, res) => {
-  res.json({
-    success: true,
-    data: [
-      {
-        id: 12345,
-        name: "Kapil Sharma",
-        profile_path: "/test.jpg"
-      },
-      {
-        id: 12346,
-        name: "Tejasswi Prakash",
-        profile_path: "/test2.jpg"
-      }
-    ]
-  });
-});
+    const data = await fetchActorsData(paginatedIds, lang);
 
-// ২️⃣ অ্যাক্টরের ডিটেইলস এবং তার মুভি লিস্ট (Actor Profile Page-এর জন্য)
+    res.json({
+      success: true,
+      page: page,
+      total_pages: Math.ceil(allIds.length / limit),
+      total_results: allIds.length,
+      data: data
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
+// ---------------------------------------------------------
+// ১️⃣ হোমপেজ ও ভিউ অল পেজের প্যাগিনেশন রাউটস
+// ---------------------------------------------------------
+router.get("/bollywood-stars", (req, res) => getPaginatedStars(req, res, "bollywood"));
+router.get("/tollywood-stars", (req, res) => getPaginatedStars(req, res, "tollywood"));
+router.get("/tv-celebrities", (req, res) => getPaginatedStars(req, res, "tv"));
+
+
+// ---------------------------------------------------------
+// ২️⃣ অ্যাক্টরের ডিটেইলস এবং তার মুভি লিস্ট (কার্ডে ক্লিক করলে এটি কাজ করবে)
+// ---------------------------------------------------------
 router.get("/:id", async (req, res) => {
   const personId = req.params.id;
   const lang = req.query.lang || "en";
@@ -110,9 +95,9 @@ router.get("/:id", async (req, res) => {
     // মুভি লিস্ট সর্টিং করা (সবচেয়ে জনপ্রিয় মুভিগুলো আগে দেখানোর জন্য)
     let works = credits?.cast || [];
     works = works
-      .filter(w => w.poster_path) // যেসব মুভির পোস্টার আছে শুধু সেগুলো নেব
+      .filter(w => w.poster_path) 
       .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
-      .slice(0, 30); // সেরা ৩০টি মুভি/সিরিজ
+      .slice(0, 30); 
 
     const formattedWorks = works.map(m => ({
       id: m.id,
