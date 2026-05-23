@@ -4,22 +4,103 @@ const tmdbService = require("../services/tmdbService");
 
 const IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 
-// বড় লিস্ট: এখানে আমরা প্রতিটি ইন্ডাস্ট্রির আসল TMDB আইডি দিয়েছি
+// প্রতিটি ক্যাটাগরিতে ৩০ জন করে জেনুইন ইন্ডিয়ান অ্যাক্টরের আইডি লিস্ট
 const STAR_IDS = {
   bollywood: [
-    35742, 52763, 139534, 1108120, 78749, 35743, 178224, 52736, 10859, 35771,
-    5530, 85732, 1108121, 102927, 73420, 1108125, 132431, 113941, 126743, 85729,
-    1372782, 1115783, 1334460, 56736, 61858, 1210137, 73934, 150090, 88785, 1530364
+    35742,   // Shah Rukh Khan
+    52763,   // Salman Khan
+    139534,  // Deepika Padukone
+    1108120, // Alia Bhatt
+    78749,   // Hrithik Roshan
+    35743,   // Katrina Kaif
+    178224,  // Ranbir Kapoor
+    52736,   // Aamir Khan
+    10814,   // Amitabh Bachchan
+    35770,   // Akshay Kumar
+    35745,   // Kareena Kapoor
+    1120014, // Ranveer Singh
+    35776,   // Ajay Devgn
+    38940,   // Priyanka Chopra
+    53139,   // Shahid Kapoor
+    63513,   // Anushka Sharma
+    1215160, // Kriti Sanon
+    1042714, // Shraddha Kapoor
+    5530,    // Aishwarya Rai Bachchan
+    234135,  // Vicky Kaushal
+    126743,  // Saif Ali Khan
+    85729,   // Sanjay Dutt
+    113941,  // John Abraham
+    132431,  // Anil Kapoor
+    102927,  // Maduri Dixit
+    73420,   // Juhi Chawla
+    85732,   // Kajol
+    56736,   // Rani Mukerji
+    61858,   // Preity Zinta
+    1115783  // Kartik Aaryan
   ],
   tollywood: [
-    55010, 108215, 73421, 147028, 1699988, 63631, 82248, 1530960, 58000, 142106,
-    139626, 171630, 119565, 1380064, 113171, 144186, 146199, 162507, 1073860, 1373722,
-    1318048, 113134, 1323326, 158102, 1759082, 1264227, 1391583, 915234, 1041935
+    55010,   // Prabhas
+    108215,  // Allu Arjun
+    73421,   // Samantha Ruth Prabhu
+    147028,  // Rashmika Mandanna
+    1699988, // Vijay Deverakonda
+    63631,   // Ram Charan
+    82248,   // Mahesh Babu
+    113134,  // N.T. Rama Rao Jr.
+    1323326, // Yash
+    58000,   // Rajinikanth
+    12053,   // Kamal Haasan
+    142106,  // Dhanush
+    119565,  // Suriya
+    139626,  // Nayanthara
+    122416,  // Trisha
+    1530960, // Dulquer Salmaan
+    1380064, // Fahadh Faasil
+    162507,  // Nani
+    146199,  // Rana Daggubati
+    113171,  // Kajal Aggarwal
+    144186,  // Tamannaah Bhatia
+    1073860, // Anushka Shetty
+    1373722, // Keerthy Suresh
+    1318048, // Sai Pallavi
+    1264227, // Rakshit Shetty
+    1391583, // Rishab Shetty
+    915234,  // Nivin Pauly
+    1041935, // Tovino Thomas
+    158102,  // Karthi
+    931637   // Vijay Sethupathi
   ],
   tv: [
-    1251144, 2352514, 1551068, 1251148, 1395535, 1243577, 1787889, 2108741, 2339678,
-    2161245, 1632766, 1443657, 1784941, 1588661, 2151631, 1373516, 2125553, 1902096,
-    1912443, 1642220, 2244900, 1500366, 1709400, 2184179, 1322026, 2011986
+    1251144, // Kapil Sharma
+    2352514, // Tejasswi Prakash
+    1551068, // Shivangi Joshi
+    1251148, // Hina Khan
+    1395535, // Sunil Grover
+    1243577, // Mouni Roy
+    1787889, // Rupali Ganguly
+    1443657, // Karan Kundrra
+    1632766, // Shaheer Sheikh
+    1322026, // Jennifer Winget
+    1588661, // Divyanka Tripathi
+    1912443, // Sriti Jha
+    2161245, // Shraddha Arya
+    2151631, // Dheeraj Dhoopar
+    1709400, // Harshad Chopda
+    1642220, // Erica Fernandes
+    2244900, // Pranali Rathod
+    1500366, // Nakuul Mehta
+    2184179, // Ayesha Singh
+    2011986, // Sumbul Touqeer
+    1784941, // Rubina Dilaik
+    2108741, // Nia Sharma
+    60565,   // Ronit Roy
+    1251141, // Shweta Tiwari
+    1174620, // Divyenndu (Mirzapur/TV)
+    1214041, // Karan Singh Grover
+    1632764, // Sanaya Irani
+    1712217, // Nakul Mehta
+    574483,  // Sakshi Tanwar
+    1243573  // Ram Kapoor
   ]
 };
 
@@ -70,17 +151,12 @@ const getPaginatedStars = async (req, res, industryKey) => {
   }
 };
 
-// ---------------------------------------------------------
 // ১️⃣ হোমপেজ ও ভিউ অল পেজের প্যাগিনেশন রাউটস
-// ---------------------------------------------------------
 router.get("/bollywood-stars", (req, res) => getPaginatedStars(req, res, "bollywood"));
 router.get("/tollywood-stars", (req, res) => getPaginatedStars(req, res, "tollywood"));
 router.get("/tv-celebrities", (req, res) => getPaginatedStars(req, res, "tv"));
 
-
-// ---------------------------------------------------------
-// ২️⃣ অ্যাক্টরের ডিটেইলস এবং তার মুভি লিস্ট (কার্ডে ক্লিক করলে এটি কাজ করবে)
-// ---------------------------------------------------------
+// ২️⃣ অ্যাক্টরের ডিটেইলস এবং তার মুভি লিস্ট
 router.get("/:id", async (req, res) => {
   const personId = req.params.id;
   const lang = req.query.lang || "en";
@@ -95,7 +171,6 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ success: false, message: "Actor not found" });
     }
 
-    // মুভি লিস্ট সর্টিং করা (সবচেয়ে জনপ্রিয় মুভিগুলো আগে দেখানোর জন্য)
     let works = credits?.cast || [];
     works = works
       .filter(w => w.poster_path) 
