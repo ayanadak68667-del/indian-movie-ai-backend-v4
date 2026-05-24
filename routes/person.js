@@ -5,104 +5,24 @@ const tmdbService = require("../services/tmdbService");
 const IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 
 // প্রতিটি ক্যাটাগরিতে ৩০ জন করে জেনুইন ইন্ডিয়ান অ্যাক্টরের আইডি লিস্ট
-const STAR_IDS = {
+  const STAR_IDS = {
   bollywood: [
-    35742,   // Shah Rukh Khan
-    52763,   // Salman Khan
-    139534,  // Deepika Padukone
-    1108120, // Alia Bhatt
-    78749,   // Hrithik Roshan
-    35743,   // Katrina Kaif
-    178224,  // Ranbir Kapoor
-    52736,   // Aamir Khan
-    10814,   // Amitabh Bachchan
-    35770,   // Akshay Kumar
-    35745,   // Kareena Kapoor
-    1120014, // Ranveer Singh
-    35776,   // Ajay Devgn
-    38940,   // Priyanka Chopra
-    53139,   // Shahid Kapoor
-    63513,   // Anushka Sharma
-    1215160, // Kriti Sanon
-    1042714, // Shraddha Kapoor
-    5530,    // Aishwarya Rai Bachchan
-    234135,  // Vicky Kaushal
-    126743,  // Saif Ali Khan
-    85729,   // Sanjay Dutt
-    113941,  // John Abraham
-    132431,  // Anil Kapoor
-    102927,  // Maduri Dixit
-    73420,   // Juhi Chawla
-    85732,   // Kajol
-    56736,   // Rani Mukerji
-    61858,   // Preity Zinta
-    1115783  // Kartik Aaryan
+    35742, 52763, 52736, 78749, 35770, 10814, 35776, 178224, 1120014, 53139, 
+    139534, 1108120, 35743, 35745, 38940, 63513, 1042714, 1215160, 1115783, 1372782, 
+    1334460, 234135, 1114002, 113941, 1173809
   ],
   tollywood: [
-    55010,   // Prabhas
-    108215,  // Allu Arjun
-    73421,   // Samantha Ruth Prabhu
-    147028,  // Rashmika Mandanna
-    1699988, // Vijay Deverakonda
-    63631,   // Ram Charan
-    82248,   // Mahesh Babu
-    113134,  // N.T. Rama Rao Jr.
-    1323326, // Yash
-    58000,   // Rajinikanth
-    12053,   // Kamal Haasan
-    142106,  // Dhanush
-    119565,  // Suriya
-    139626,  // Nayanthara
-    122416,  // Trisha
-    1530960, // Dulquer Salmaan
-    1380064, // Fahadh Faasil
-    162507,  // Nani
-    146199,  // Rana Daggubati
-    113171,  // Kajal Aggarwal
-    144186,  // Tamannaah Bhatia
-    1073860, // Anushka Shetty
-    1373722, // Keerthy Suresh
-    1318048, // Sai Pallavi
-    1264227, // Rakshit Shetty
-    1391583, // Rishab Shetty
-    915234,  // Nivin Pauly
-    1041935, // Tovino Thomas
-    158102,  // Karthi
-    931637   // Vijay Sethupathi
+    55010, 108215, 63631, 113134, 82248, 57088, 59779, 58000, 12053, 1323326, 
+    73421, 147028, 139626, 122416, 1073860, 144186, 113171, 119565, 142106, 1699988, 
+    1530960, 1380064, 162507, 158102, 113129
   ],
   tv: [
-    1251144, // Kapil Sharma
-    2352514, // Tejasswi Prakash
-    1551068, // Shivangi Joshi
-    1251148, // Hina Khan
-    1395535, // Sunil Grover
-    1243577, // Mouni Roy
-    1787889, // Rupali Ganguly
-    1443657, // Karan Kundrra
-    1632766, // Shaheer Sheikh
-    1322026, // Jennifer Winget
-    1588661, // Divyanka Tripathi
-    1912443, // Sriti Jha
-    2161245, // Shraddha Arya
-    2151631, // Dheeraj Dhoopar
-    1709400, // Harshad Chopda
-    1642220, // Erica Fernandes
-    2244900, // Pranali Rathod
-    1500366, // Nakuul Mehta
-    2184179, // Ayesha Singh
-    2011986, // Sumbul Touqeer
-    1784941, // Rubina Dilaik
-    2108741, // Nia Sharma
-    60565,   // Ronit Roy
-    1251141, // Shweta Tiwari
-    1174620, // Divyenndu (Mirzapur/TV)
-    1214041, // Karan Singh Grover
-    1632764, // Sanaya Irani
-    1712217, // Nakul Mehta
-    574483,  // Sakshi Tanwar
-    1243573  // Ram Kapoor
+    1251144, 1395535, 1251148, 1243577, 1551068, 2352514, 1787889, 1632766, 1443657, 1322026, 
+    1588661, 2161245, 2151631, 1709400, 1912443, 1642220, 2244900, 1500366, 2184179, 2011986, 
+    1784941, 2108741, 60565, 1243573, 574483
   ]
 };
+
 
 // হেল্পার ফাংশন: আইডি থেকে রিয়াল-টাইম ডেটা আনার জন্য
 const fetchActorsData = async (ids, lang = "en") => {
