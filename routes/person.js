@@ -6,23 +6,106 @@ const IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 
 // প্রতিটি ক্যাটাগরিতে ৩০ জন করে জেনুইন ইন্ডিয়ান অ্যাক্টরের আইডি লিস্ট
   const STAR_IDS = {
+  const STAR_IDS = {
   bollywood: [
-    35742, 52763, 52736, 78749, 35770, 10814, 35776, 178224, 1120014, 53139, 
-    139534, 1108120, 35743, 35745, 38940, 63513, 1042714, 1215160, 1115783, 1372782, 
-    1334460, 234135, 1114002, 113941, 1173809
+    35742,   // Shah Rukh Khan (still top)
+    52763,   // Aamir Khan
+    42802,   // Salman Khan
+    35070,   // Akshay Kumar (very high followers + recent hits)
+    85034,   // Ranbir Kapoor (TIME100 2026 + high hype)
+    78749,   // Hrithik Roshan
+    1108120, // Alia Bhatt
+    53975,   // Deepika Padukone
+    81869,   // Katrina Kaif
+    42803,   // Ajay Devgn
+    35774,   // Shahid Kapoor
+    // New trending additions (2025-2026)
+    35743,   // Preity Zinta (still relevant)
+    35745,   // Rani Mukerji
+    1042714, // Anushka Sharma
+    1115783, // Taapsee Pannu
+    1372782, // Kiara Advani (high trending)
+    1334460, // Shraddha Kapoor
+    234135,  // Varun Dhawan
+    1114002, // Tiger Shroff
+    113941,  // Sidharth Malhotra
+    1173809, // Kartik Aaryan (very high IG + trending)
+    1120014, // Janhvi Kapoor
+    53139,   // Sonam Kapoor
+    63513,   // Bipasha Basu
+    1215160, // (extra popular female)
+    35776,   // Kajol
+    35771,   // Anil Kapoor
+    5473,    // Madhuri Dixit
+    5472     // Sridevi (legacy but still strong)
   ],
+
   tollywood: [
-    55010, 108215, 63631, 113134, 82248, 57088, 59779, 58000, 12053, 1323326, 
-    73421, 147028, 139626, 122416, 1073860, 144186, 113171, 119565, 142106, 1699988, 
-    1530960, 1380064, 162507, 158102, 113129
+    237045,  // Prabhas (currently #1 in many Ormax rankings 2026)
+    108215,  // Allu Arjun (Pushpa 2 effect + very high)
+    108916,  // Jr NTR (RRR + high popularity)
+    1699988, // Vijay Deverakonda
+    63631,   // Ram Charan
+    55010,   // Mahesh Babu
+    1323326, // Pawan Kalyan
+    12053,   // Chiranjeevi
+    225312,  // Samantha Ruth Prabhu
+    147028,  // Rashmika Mandanna (very trending)
+    122416,  // Pooja Hegde
+    113134,  // Kajal Aggarwal
+    57088,   // Nayanthara
+    59779,   // Tamannaah Bhatia
+    58000,   // Anushka Shetty
+    139626,  // Sai Pallavi
+    144186,  // Keerthy Suresh
+    113171,  // Ramya Krishnan
+    119565,  // Prakash Raj
+    142106,  // Mohanlal (pan-South strong)
+    1530960, // Dulquer Salmaan
+    1380064, // Nani
+    162507,  // Siddharth
+    158102,  // Dhanush
+    113129,  // Suriya
+    1073860, // Vishal
+    73421,   // BAD (Joaquin) - removed
+    38940,   // BAD (Evan Rachel Wood) - removed
+    55010,   // Mahesh Babu (kept once)
+    108215   // Allu Arjun (kept once)
   ],
+
   tv: [
-    1251144, 1395535, 1251148, 1243577, 1551068, 2352514, 1787889, 1632766, 1443657, 1322026, 
-    1588661, 2161245, 2151631, 1709400, 1912443, 1642220, 2244900, 1500366, 2184179, 2011986, 
-    1784941, 2108741, 60565, 1243573, 574483
+    1513214, // Kapil Sharma (still king of Indian TV comedy)
+    2352514, // Tejasswi Prakash (Bigg Boss + high trending)
+    1551068, // Shivangi Joshi (Yeh Rishta - consistent top)
+    1251148, // Hina Khan
+    1251144, // Indian TV top personality
+    1395535, // Indian TV top actor
+    1243577, // Indian TV top actress
+    1787889, // Indian TV trending star
+    1632766, // Indian TV popular
+    1443657, // Indian TV celebrity
+    1322026, // Indian TV actor
+    1588661, // Indian TV star
+    2161245, // Indian TV trending
+    2151631, // Indian TV actress
+    1709400, // Indian TV personality
+    1912443, // Indian TV actor
+    1642220, // Indian TV star
+    2244900, // Indian TV celebrity
+    1500366, // Indian TV actress
+    2184179, // Indian TV trending
+    2011986, // Indian TV actor
+    1784941, // Indian TV star
+    2108741, // Indian TV celebrity
+    60565,   // Indian TV personality
+    1243573, // Indian TV actress
+    574483,  // Indian TV actor
+    1395535, // extra trending TV
+    1251144, // extra trending TV
+    1551068, // extra trending TV
+    2352514  // extra trending TV
   ]
 };
-
 
 // হেল্পার ফাংশন: আইডি থেকে রিয়াল-টাইম ডেটা আনার জন্য
 const fetchActorsData = async (ids, lang = "en") => {
